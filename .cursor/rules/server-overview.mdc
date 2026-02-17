@@ -1,0 +1,136 @@
+---
+description: Server 后端项目总览规则（NestJS 架构说明）
+globs: server/**/*
+alwaysApply: false
+---
+
+# Server 后端项目总览
+
+## 项目信息
+
+- **框架**: NestJS 11
+- **ORM**: TypeORM 0.3
+- **数据库**: MySQL 8
+- **语言**: TypeScript 5.7
+- **API 文档**: Swagger
+
+## 项目结构
+
+```
+server/
+├── src/
+│   ├── main.ts                 # 应用入口文件
+│   ├── app.module.ts           # 根模块
+│   ├── config/                 # 配置文件
+│   ├── modules/                # 业务模块
+│   ├── common/                 # 公共模块
+│   ├── shared/                 # 共享模块
+│   └── migrations/             # 数据库迁移文件
+├── test/                       # 测试文件
+├── docs/                       # 文档目录
+└── database/                   # 数据库相关文件
+```
+
+## 核心模块
+
+### 业务模块 (`src/modules/`)
+
+- **user** - 用户管理
+- **post** - 文章管理
+- **category** - 分类管理
+- **tag** - 标签管理
+- **comment** - 评论管理
+- **visitor** - 访客统计
+- **oss** - 文件上传
+- **friend-link** - 友链管理
+- **guest-message** - 留言管理
+- **changelog** - 更新日志
+- **setting** - 系统设置
+- **seo-setting** - SEO 设置
+- **icp-info** - ICP 信息
+
+### 公共模块 (`src/common/`)
+
+- **decorators** - 自定义装饰器
+- **guards** - 路由守卫（JWT 认证）
+- **interceptors** - 拦截器
+- **pagination** - 分页工具
+- **constants** - 常量定义
+- **entity** - 通用实体（CommonEntity）
+- **model** - 数据模型
+
+### 共享模块 (`src/shared/`)
+
+- **database** - 数据库配置和连接
+
+## 通用规范
+
+项目遵循以下通用规范（继承自项目根目录的 `project-standards.mdc`）：
+
+- **语言**: 注释、变量命名、提交信息使用中文或英文均可；生成代码时的注释优先中文
+- **格式**: 单引号、分号、2 空格缩进、printWidth 100、尾逗号 es5、箭头函数单参数省略括号
+- **导入顺序**: NestJS 核心 → 第三方库 → 内部别名 → 父级/兄弟/index → type 导入
+- **路径别名**: 使用 `@/*` 引用模块，禁止跨级相对路径引用
+- **未使用变量**: 以 `_` 开头的参数或变量视为有意忽略
+
+## 开发命令
+
+```bash
+# 开发
+npm run start:dev          # 启动开发服务器（热重载）
+
+# 生产
+npm run build              # 构建项目
+npm run start:prod         # 启动生产服务器
+
+# 代码质量
+npm run format             # 格式化代码
+npm run lint               # 代码检查并自动修复
+
+# 测试
+npm run test               # 运行单元测试
+npm run test:watch         # 监听模式运行测试
+npm run test:cov           # 生成测试覆盖率报告
+npm run test:e2e           # 运行端到端测试
+
+# 数据库迁移
+npm run migration:create   # 创建新的迁移文件
+npm run migration:generate # 根据实体变更生成迁移文件
+npm run migration:run      # 运行迁移
+npm run migration:revert   # 回滚迁移
+```
+
+## 技术栈
+
+### 核心框架
+- NestJS 11 - Node.js 框架
+- TypeScript 5.7 - 类型系统
+- Express - HTTP 服务器
+
+### 数据库
+- TypeORM 0.3 - ORM 框架
+- MySQL2 3.0 - MySQL 驱动
+
+### 认证与安全
+- @nestjs/jwt - JWT 认证
+- @nestjs/passport - Passport 集成
+- bcryptjs - 密码加密
+
+### 数据验证
+- class-validator - 数据验证
+- class-transformer - 对象转换
+
+### API 文档
+- @nestjs/swagger - Swagger 集成
+
+## 注意事项
+
+- 使用 NestJS 的模块化架构
+- 遵循依赖注入原则
+- 使用 TypeORM 进行数据库操作
+- 使用 DTO 进行数据验证
+- 使用 Guards 进行认证和授权
+- 使用 Interceptors 进行响应转换
+- 使用 Exception Filters 进行异常处理
+- 数据库迁移使用 TypeORM Migrations
+- 生产环境必须设置 `DB_SYNCHRONIZE=false`
