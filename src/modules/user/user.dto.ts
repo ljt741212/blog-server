@@ -26,60 +26,21 @@ export class UserLoginDto {
 }
 
 export class CreateUserDto {
-  @IsNotEmpty()
-  @IsString()
-  username: string;
-
-  @IsOptional()
-  @IsString()
-  nickname?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(4)
-  password?: string;
-
-  @IsNotEmpty()
-  @IsEmail()
-  email: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsString()
-  wechat?: string;
-
-  @IsOptional()
-  @IsString()
-  avatar?: string;
-
-  @IsOptional()
-  @IsString()
-  bio?: string;
-
-  @IsOptional()
-  @IsString()
-  githubAccount?: string;
-
-  @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
-
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-}
-
-export class UpdateUserDto {
   @IsOptional()
   @IsString()
   username?: string;
 
   @IsOptional()
   @IsString()
+  Name?: string;
+
+  @IsOptional()
+  @IsString()
   nickname?: string;
+
+  @IsOptional()
+  @IsString()
+  NikName?: string;
 
   @IsOptional()
   @IsString()
@@ -91,8 +52,16 @@ export class UpdateUserDto {
   email?: string;
 
   @IsOptional()
+  @IsEmail()
+  Email?: string;
+
+  @IsOptional()
   @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsString()
+  Phone?: string;
 
   @IsOptional()
   @IsString()
@@ -100,7 +69,15 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  WeChat?: string;
+
+  @IsOptional()
+  @IsString()
   avatar?: string;
+
+  @IsOptional()
+  @IsString()
+  Avatar?: string;
 
   @IsOptional()
   @IsString()
@@ -108,7 +85,15 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  Description?: string;
+
+  @IsOptional()
+  @IsString()
   githubAccount?: string;
+
+  @IsOptional()
+  @IsString()
+  GitHub?: string;
 
   @IsOptional()
   @IsEnum(Gender)
@@ -117,6 +102,54 @@ export class UpdateUserDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+}
+
+/** 修改用户入参：与前端约定使用大驼峰 */
+export class UpdateUserDto {
+  @IsOptional()
+  @IsString()
+  Name?: string;
+
+  @IsOptional()
+  @IsString()
+  NikName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(4)
+  Password?: string;
+
+  @IsOptional()
+  @IsEmail()
+  Email?: string;
+
+  @IsOptional()
+  @IsString()
+  Phone?: string;
+
+  @IsOptional()
+  @IsString()
+  WeChat?: string;
+
+  @IsOptional()
+  @IsString()
+  Avatar?: string;
+
+  @IsOptional()
+  @IsString()
+  Description?: string;
+
+  @IsOptional()
+  @IsString()
+  GitHub?: string;
+
+  @IsOptional()
+  @IsEnum(Gender)
+  Gender?: Gender;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  Role?: UserRole;
 }
 
 export class UserListQueryDto extends PaginationQueryDto {

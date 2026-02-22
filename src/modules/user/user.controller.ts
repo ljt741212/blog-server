@@ -62,7 +62,7 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   save(
     @Body()
-    dto: CreateUserDto | (UpdateUserDto & { id?: number }),
+    dto: CreateUserDto | (UpdateUserDto & { id?: number; Id?: string }),
   ) {
     if ('id' in dto && dto.id != null) {
       const id = Number(dto.id);

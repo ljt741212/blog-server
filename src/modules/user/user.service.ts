@@ -21,6 +21,23 @@ import {
 } from './user.dto';
 import { User } from './user.entity';
 
+function toUserResponse(u: User) {
+  return {
+    Id: String(u.id),
+    Name: u.username,
+    NikName: u.nickname,
+    Email: u.email,
+    Phone: u.phone,
+    WeChat: u.wechat,
+    Avatar: u.avatar,
+    Role: u.role,
+    Status: '1',
+    Description: u.bio,
+    GitHub: u.githubAccount,
+    CreatedAt: u.createdAt,
+  };
+}
+
 @Injectable()
 export class UserService {
   constructor(
@@ -65,20 +82,7 @@ export class UserService {
 
     return {
       ...pageResult,
-      items: pageResult.items.map((u: User) => ({
-        id: String(u.id),
-        name: u.username,
-        nickname: u.nickname,
-        email: u.email,
-        phone: u.phone,
-        wechat: u.wechat,
-        avatar: u.avatar,
-        role: u.role,
-        status: '1',
-        description: u.bio,
-        github: u.githubAccount,
-        createdAt: u.createdAt,
-      })),
+      items: pageResult.items.map((u: User) => toUserResponse(u)),
     };
   }
 
@@ -95,43 +99,29 @@ export class UserService {
 
   async findDetailForAdmin(id: number) {
     const u = await this.findOne(id);
-    return {
-      id: String(u.id),
-      name: u.username,
-      nickname: u.nickname,
-      email: u.email,
-      phone: u.phone,
-      wechat: u.wechat,
-      avatar: u.avatar,
-      role: u.role,
-      status: '1',
-      description: u.bio,
-      github: u.githubAccount,
-      createdAt: u.createdAt,
-    };
+    return toUserResponse(u);
   }
 
   async create(dto: CreateUserDto) {
+    const username = dto.Name ?? dto.username;
+    const email = dto.Email ?? dto.email;
+    if (!username || !email) {
+      throw new BadRequestException('用户名和邮箱必填');
+    }
     const exists = await this.userRepository.findOne({
-      where: [{ username: dto.username }, { email: dto.email }],
+      where: [{ username }, { email }],
     });
     if (exists) {
       throw new BadRequestException('用户名或邮箱已存在');
     }
 
-    const {
-      username,
-      nickname,
-      password: dtoPassword,
-      email,
-      phone,
-      wechat,
-      avatar,
-      bio,
-      githubAccount,
-      gender,
-      role,
-    } = dto;
+    const nickname = dto.NikName ?? dto.nickname;
+    const phone = dto.Phone ?? dto.phone;
+    const wechat = dto.WeChat ?? dto.wechat;
+    const avatar = dto.Avatar ?? dto.avatar;
+    const bio = dto.Description ?? dto.bio;
+    const githubAccount = dto.GitHub ?? dto.githubAccount;
+    const { password: dtoPassword, gender, role } = dto;
 
     const rawPassword = dtoPassword ?? '123456';
     const password = await bcrypt.hash(rawPassword, 10);
@@ -157,17 +147,17 @@ export class UserService {
     const user = await this.findOne(id);
 
     const {
-      username,
-      nickname,
-      email,
-      phone,
-      wechat,
-      password,
-      avatar,
-      bio,
-      githubAccount,
-      gender,
-      role,
+      Name: username,
+      NikName: nickname,
+      Email: email,
+      Phone: phone,
+      WeChat: wechat,
+      Avatar: avatar,
+      Description: bio,
+      GitHub: githubAccount,
+      Password: password,
+      Gender: gender,
+      Role: role,
     } = dto;
 
     if (username && username !== user.username) {
@@ -233,18 +223,7 @@ export class UserService {
 
     return {
       token,
-      user: {
-        id: String(user.id),
-        name: user.username,
-        nickname: user.nickname,
-        email: user.email,
-        phone: user.phone,
-        wechat: user.wechat,
-        avatar: user.avatar,
-        role: user.role,
-        status: '1',
-        description: user.bio,
-      },
+      user: toUserResponse(user),
     };
   }
 
