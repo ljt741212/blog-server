@@ -1,12 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, In, Repository } from 'typeorm';
+import { Between, In, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { Category } from '@/modules/category/category.entity';
 import { Comment } from '@/modules/comment/comment.entity';
 import { Post } from '@/modules/post/post.entity';
 
 import { TrackVisitDto } from './dto/track-visit.dto';
+import { OnlineStreamService } from './online-stream.service';
 import { VisitorLog } from './visitor-log.entity';
 import { Visitor } from './visitor.entity';
 
@@ -25,6 +26,8 @@ export class VisitorService {
     private readonly commentRepo: Repository<Comment>,
     @InjectRepository(Category)
     private readonly categoryRepo: Repository<Category>,
+    @Inject(forwardRef(() => OnlineStreamService))
+    private readonly onlineStream: OnlineStreamService,
   ) {}
 
   async recordVisit(dto: TrackVisitDto, req: Request) {
@@ -52,6 +55,7 @@ export class VisitorService {
       visitor = await this.visitorRepo.findOne({ where: { ip } });
     }
 
+    const now = new Date();
     if (!visitor) {
       visitor = this.visitorRepo.create({
         visitorId: dto.visitorId ?? null,
@@ -59,10 +63,14 @@ export class VisitorService {
         ip,
         userAgent,
         location: null,
+        lastActiveAt: now,
       });
       visitor = await this.visitorRepo.save(visitor);
     } else {
       let needSave = false;
+
+      visitor.lastActiveAt = now;
+      needSave = true;
 
       if (!visitor.userAgent && userAgent) {
         visitor.userAgent = userAgent;
@@ -94,10 +102,67 @@ export class VisitorService {
     });
     await this.visitorLogRepo.save(log);
 
+    this.onlineStream.trigger();
+
     return {
       id: visitor.id,
       ip: visitor.ip,
     };
+  }
+
+  /**
+   * 心跳：仅更新 lastActiveAt，不写入 visitor_logs（供前端定时调用）
+   */
+  async recordHeartbeat(dto: TrackVisitDto, req: Request) {
+    const forwarded = req.headers['x-forwarded-for'];
+    const rawIp =
+      (typeof forwarded === 'string' ? forwarded : '') ||
+      (req.ip ?? '') ||
+      (req.socket?.remoteAddress ?? '') ||
+      '';
+    const ip = rawIp.split(',')[0].trim();
+    const userAgent =
+      dto.userAgent || (req.headers['user-agent'] as string) || '';
+
+    let visitor = await this.visitorRepo.findOne({
+      where: dto.visitorId
+        ? [
+            { visitorId: dto.visitorId },
+            { fingerprint: dto.visitorId },
+          ]
+        : [{ ip }],
+    });
+    if (!visitor) {
+      visitor = await this.visitorRepo.findOne({ where: { ip } });
+    }
+
+    const now = new Date();
+    if (!visitor) {
+      visitor = this.visitorRepo.create({
+        visitorId: dto.visitorId ?? null,
+        fingerprint: dto.visitorId ?? null,
+        ip,
+        userAgent,
+        location: null,
+        lastActiveAt: now,
+      });
+      await this.visitorRepo.save(visitor);
+      return { success: true };
+    }
+
+    visitor.lastActiveAt = now;
+    if (!visitor.userAgent && userAgent) {
+      visitor.userAgent = userAgent;
+    }
+    if (!visitor.visitorId && dto.visitorId) {
+      visitor.visitorId = dto.visitorId;
+    }
+    if (!visitor.fingerprint && dto.visitorId) {
+      visitor.fingerprint = dto.visitorId;
+    }
+    await this.visitorRepo.save(visitor);
+    this.onlineStream.trigger();
+    return { success: true };
   }
 
   async findAllVisitors() {
@@ -106,6 +171,25 @@ export class VisitorService {
         id: 'DESC',
       },
     });
+  }
+
+  async getOnlineStats(minutes = 5) {
+    const since = new Date(Date.now() - minutes * 60 * 1000);
+    const [list, count] = await this.visitorRepo.findAndCount({
+      where: { lastActiveAt: MoreThanOrEqual(since) },
+      order: { lastActiveAt: 'DESC' },
+      select: ['id', 'ip', 'userAgent', 'lastActiveAt', 'visitorId'],
+    });
+    return {
+      count,
+      list: list.map((v) => ({
+        id: v.id,
+        ip: v.ip,
+        userAgent: v.userAgent ?? null,
+        lastActiveAt: v.lastActiveAt,
+        visitorId: v.visitorId ?? null,
+      })),
+    };
   }
 
   async getDashboardStats() {

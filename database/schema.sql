@@ -50,6 +50,7 @@ CREATE TABLE `visitors` (
   `ip` varchar(50) NOT NULL COMMENT 'IP地址',
   `location` varchar(100) DEFAULT NULL COMMENT '位置',
   `user_agent` varchar(255) DEFAULT NULL COMMENT '用户代理',
+  `last_active_at` datetime(6) DEFAULT NULL COMMENT '最后活跃时间（用于统计当前在线）',
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
   PRIMARY KEY (`id`),

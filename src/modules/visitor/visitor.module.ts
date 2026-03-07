@@ -8,6 +8,7 @@ import { Category } from '@/modules/category/category.entity';
 import { Comment } from '@/modules/comment/comment.entity';
 import { Post } from '@/modules/post/post.entity';
 
+import { OnlineStreamService } from './online-stream.service';
 import { VisitorLog } from './visitor-log.entity';
 import { VisitorController } from './visitor.controller';
 import { Visitor } from './visitor.entity';
@@ -21,7 +22,7 @@ import { VisitorService } from './visitor.service';
     }),
   ],
   controllers: [VisitorController],
-  providers: [VisitorService, JwtAuthGuard],
+  providers: [VisitorService, OnlineStreamService, JwtAuthGuard],
   exports: [VisitorService],
 })
 export class VisitorModule {}

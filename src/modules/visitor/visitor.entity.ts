@@ -42,6 +42,15 @@ export class Visitor extends CommonEntity {
   })
   userAgent: string;
 
+  @Column({
+    name: 'last_active_at',
+    type: 'datetime',
+    precision: 6,
+    nullable: true,
+    comment: '最后活跃时间（用于统计当前在线）',
+  })
+  lastActiveAt: Date | null;
+
   @Type(() => Comment)
   @OneToMany(() => Comment, (comment) => comment.visitor)
   comments: Comment[];
