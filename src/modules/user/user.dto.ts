@@ -104,7 +104,7 @@ export class CreateUserDto {
   role?: UserRole;
 }
 
-/** 修改用户入参：与前端约定使用大驼峰 */
+/** 修改用户入参：小驼峰为主，仍兼容历史大驼峰字段 */
 export class UpdateUserDto {
   @IsOptional()
   @IsString()
@@ -112,7 +112,15 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  username?: string;
+
+  @IsOptional()
+  @IsString()
   NikName?: string;
+
+  @IsOptional()
+  @IsString()
+  nickname?: string;
 
   @IsOptional()
   @IsString()
@@ -120,8 +128,17 @@ export class UpdateUserDto {
   Password?: string;
 
   @IsOptional()
+  @IsString()
+  @MinLength(4)
+  password?: string;
+
+  @IsOptional()
   @IsEmail()
   Email?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()
@@ -129,7 +146,15 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
   WeChat?: string;
+
+  @IsOptional()
+  @IsString()
+  wechat?: string;
 
   @IsOptional()
   @IsString()
@@ -137,19 +162,39 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
+  avatar?: string;
+
+  @IsOptional()
+  @IsString()
   Description?: string;
+
+  @IsOptional()
+  @IsString()
+  bio?: string;
 
   @IsOptional()
   @IsString()
   GitHub?: string;
 
   @IsOptional()
+  @IsString()
+  githubAccount?: string;
+
+  @IsOptional()
   @IsEnum(Gender)
   Gender?: Gender;
 
   @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
+
+  @IsOptional()
   @IsEnum(UserRole)
   Role?: UserRole;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
 }
 
 export class UserListQueryDto extends PaginationQueryDto {

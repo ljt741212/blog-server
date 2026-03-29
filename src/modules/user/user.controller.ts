@@ -37,6 +37,11 @@ export class UserController {
     return this.userService.findCurrentUser(authorization);
   }
 
+  @Get('super-admin')
+  async getSuperAdmin() {
+    return this.userService.findSuperAdmin();
+  }
+
   @Put('change-password')
   @UseGuards(JwtAuthGuard)
   changePassword(
@@ -62,13 +67,19 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   save(
     @Body()
-    dto: CreateUserDto | (UpdateUserDto & { id?: number; Id?: string }),
+    dto:
+      | CreateUserDto
+      | (UpdateUserDto & { id?: number | string; Id?: string }),
   ) {
-    if ('id' in dto && dto.id != null) {
-      const id = Number(dto.id);
-      const rest = { ...dto };
-      delete (rest as Record<string, unknown>).id;
-      return this.userService.update(id, rest as UpdateUserDto);
+    const rawId = 'id' in dto ? dto.id : (dto as { Id?: string }).Id;
+    if (rawId != null && rawId !== '') {
+      const id = Number(rawId);
+      if (Number.isFinite(id) && id > 0) {
+        const rest = { ...dto };
+        delete (rest as Record<string, unknown>).id;
+        delete (rest as Record<string, unknown>).Id;
+        return this.userService.update(id, rest as UpdateUserDto);
+      }
     }
     return this.userService.create(dto as CreateUserDto);
   }

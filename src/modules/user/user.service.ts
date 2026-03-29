@@ -19,22 +19,23 @@ import {
   UserLoginDto,
   UserPageQueryDto,
 } from './user.dto';
-import { User } from './user.entity';
+import { User, UserRole } from './user.entity';
 
+/** 用户对外 JSON：统一小驼峰 */
 function toUserResponse(u: User) {
   return {
-    Id: String(u.id),
-    Name: u.username,
-    NikName: u.nickname,
-    Email: u.email,
-    Phone: u.phone,
-    WeChat: u.wechat,
-    Avatar: u.avatar,
-    Role: u.role,
-    Status: '1',
-    Description: u.bio,
-    GitHub: u.githubAccount,
-    CreatedAt: u.createdAt,
+    id: String(u.id),
+    username: u.username,
+    nickname: u.nickname,
+    email: u.email,
+    phone: u.phone,
+    wechat: u.wechat,
+    avatar: u.avatar,
+    role: u.role,
+    status: 1,
+    bio: u.bio,
+    github: u.githubAccount,
+    createdAt: u.createdAt,
   };
 }
 
@@ -89,6 +90,14 @@ export class UserService {
   async findCurrentUser(authorization?: string) {
     const userId = this.extractUserIdFromAuthorization(authorization);
     return this.findDetailForAdmin(userId);
+  }
+
+  async findSuperAdmin() {
+    const user = await this.userRepository.findOne({
+      where: { role: UserRole.SUPER_ADMIN },
+    });
+    if (!user) throw new NotFoundException('超级管理员不存在');
+    return toUserResponse(user);
   }
 
   async findOne(id: number) {
@@ -146,19 +155,17 @@ export class UserService {
   async update(id: number, dto: UpdateUserDto) {
     const user = await this.findOne(id);
 
-    const {
-      Name: username,
-      NikName: nickname,
-      Email: email,
-      Phone: phone,
-      WeChat: wechat,
-      Avatar: avatar,
-      Description: bio,
-      GitHub: githubAccount,
-      Password: password,
-      Gender: gender,
-      Role: role,
-    } = dto;
+    const username = dto.Name ?? dto.username;
+    const nickname = dto.NikName ?? dto.nickname;
+    const email = dto.Email ?? dto.email;
+    const phone = dto.Phone ?? dto.phone;
+    const wechat = dto.WeChat ?? dto.wechat;
+    const avatar = dto.Avatar ?? dto.avatar;
+    const bio = dto.Description ?? dto.bio;
+    const githubAccount = dto.GitHub ?? dto.githubAccount;
+    const password = dto.Password ?? dto.password;
+    const gender = dto.Gender ?? dto.gender;
+    const role = dto.Role ?? dto.role;
 
     if (username && username !== user.username) {
       const exists = await this.userRepository.findOne({ where: { username } });
@@ -227,7 +234,10 @@ export class UserService {
     };
   }
 
-  async changePassword(authorization: string | undefined, dto: ChangePasswordDto) {
+  async changePassword(
+    authorization: string | undefined,
+    dto: ChangePasswordDto,
+  ) {
     const userId = this.extractUserIdFromAuthorization(authorization);
     const user = await this.findOne(userId);
 
