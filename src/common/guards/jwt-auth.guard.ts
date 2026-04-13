@@ -10,6 +10,7 @@ import { Request } from 'express';
 export interface JwtPayload {
   sub?: number;
   id?: number;
+  role?: number;
 }
 
 @Injectable()
@@ -35,8 +36,9 @@ export class JwtAuthGuard implements CanActivate {
       if (userId == null) {
         throw new UnauthorizedException('登录信息无效');
       }
-      (request as Request & { user: { id: number } }).user = {
+      (request as Request & { user: { id: number; role?: number } }).user = {
         id: Number(userId),
+        role: typeof payload?.role === 'number' ? payload.role : undefined,
       };
       return true;
     } catch {

@@ -2,6 +2,7 @@ export * from './constants/response.constant';
 export * from './decorators/bypass.decorator';
 export * from './decorators/current-user.decorator';
 export * from './guards/jwt-auth.guard';
+export * from './guards/super-admin.guard';
 export * from './interceptors/transform.interceptor';
 export * from './model/response.model';
 export * from './pagination/pagination.dto';
