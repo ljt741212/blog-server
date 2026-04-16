@@ -95,6 +95,11 @@ export class CreateUserDto {
   @IsString()
   GitHub?: string;
 
+  /** 前端对外 JSON 字段：github */
+  @IsOptional()
+  @IsString()
+  github?: string;
+
   @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;
@@ -179,6 +184,11 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   githubAccount?: string;
+
+  /** 前端对外 JSON 字段：github */
+  @IsOptional()
+  @IsString()
+  github?: string;
 
   @IsOptional()
   @IsEnum(Gender)

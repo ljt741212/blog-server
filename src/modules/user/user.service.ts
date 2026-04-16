@@ -129,7 +129,7 @@ export class UserService {
     const wechat = dto.WeChat ?? dto.wechat;
     const avatar = dto.Avatar ?? dto.avatar;
     const bio = dto.Description ?? dto.bio;
-    const githubAccount = dto.GitHub ?? dto.githubAccount;
+    const githubAccount = dto.GitHub ?? dto.githubAccount ?? dto.github;
     const { password: dtoPassword, gender, role } = dto;
 
     const rawPassword = dtoPassword ?? '123456';
@@ -162,7 +162,7 @@ export class UserService {
     const wechat = dto.WeChat ?? dto.wechat;
     const avatar = dto.Avatar ?? dto.avatar;
     const bio = dto.Description ?? dto.bio;
-    const githubAccount = dto.GitHub ?? dto.githubAccount;
+    const githubAccount = dto.GitHub ?? dto.githubAccount ?? dto.github;
     const password = dto.Password ?? dto.password;
     const gender = dto.Gender ?? dto.gender;
     const role = dto.Role ?? dto.role;
