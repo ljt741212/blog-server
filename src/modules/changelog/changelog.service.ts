@@ -2,10 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { paginateQueryBuilderForAdmin, PaginationQueryDto } from '@/common';
+import { paginateQueryBuilderForAdmin } from '@/common';
 
 import {
-  ChangelogListQueryDto,
   ChangelogPageQueryDto,
   SaveChangelogDto,
   UpdateChangelogStatusDto,
@@ -19,15 +18,13 @@ export class ChangelogService {
     private readonly changelogRepository: Repository<Changelog>,
   ) {}
 
-  async paginate(query: ChangelogListQueryDto) {
+  async paginateForAdmin(query: ChangelogPageQueryDto) {
     const qb = this.changelogRepository.createQueryBuilder('changelog');
 
-    if (query.keyword) {
+    if (query.searchValue) {
       qb.andWhere(
         '(changelog.version LIKE :kw OR changelog.title LIKE :kw OR changelog.content LIKE :kw)',
-        {
-          kw: `%${query.keyword}%`,
-        },
+        { kw: `%${query.searchValue}%` },
       );
     }
 
@@ -46,18 +43,7 @@ export class ChangelogService {
       'DESC',
     );
 
-    return paginateQueryBuilderForAdmin(qb, query as PaginationQueryDto);
-  }
-
-  async paginateForAdmin(query: ChangelogPageQueryDto) {
-    const normalized: ChangelogListQueryDto = {
-      page: query.current ?? 1,
-      limit: query.pageSize ?? 10,
-      keyword: query.searchValue,
-      type: query.type,
-      isPublished: query.isPublished,
-    };
-    return this.paginate(normalized);
+    return paginateQueryBuilderForAdmin(qb, query);
   }
 
   async findAll() {

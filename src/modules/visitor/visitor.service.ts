@@ -126,10 +126,7 @@ export class VisitorService {
 
     let visitor = await this.visitorRepo.findOne({
       where: dto.visitorId
-        ? [
-            { visitorId: dto.visitorId },
-            { fingerprint: dto.visitorId },
-          ]
+        ? [{ visitorId: dto.visitorId }, { fingerprint: dto.visitorId }]
         : [{ ip }],
     });
     if (!visitor) {

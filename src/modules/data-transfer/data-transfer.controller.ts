@@ -1,3 +1,6 @@
+import * as os from 'os';
+import { extname } from 'path';
+
 import {
   BadRequestException,
   Controller,
@@ -11,14 +14,13 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiConsumes } from '@nestjs/swagger';
-import type { Response } from 'express';
 import { diskStorage } from 'multer';
-import * as os from 'os';
-import { extname } from 'path';
 
 import { Bypass, JwtAuthGuard, SuperAdminGuard } from '@/common';
 
 import { DataTransferService } from './data-transfer.service';
+
+import type { Response } from 'express';
 
 @Controller('data-transfer')
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
@@ -61,4 +63,3 @@ export class DataTransferController {
     });
   }
 }
-

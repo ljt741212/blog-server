@@ -36,7 +36,12 @@ async function seed() {
   console.log('[seed] 已创建初始管理员');
   console.log('  用户名:', username);
   console.log('  邮箱:', email);
-  console.log('  密码:', rawPassword === DEFAULT_PASSWORD ? `${rawPassword}（请尽快在后台修改）` : '***');
+  console.log(
+    '  密码:',
+    rawPassword === DEFAULT_PASSWORD
+      ? `${rawPassword}（请尽快在后台修改）`
+      : '***',
+  );
   await dataSource.destroy();
 }
 

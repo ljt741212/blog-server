@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Request } from 'express';
 
 import { UserRole } from '@/modules/user/user.entity';
@@ -16,4 +21,3 @@ export class SuperAdminGuard implements CanActivate {
     throw new ForbiddenException('仅超级管理员可操作');
   }
 }
-

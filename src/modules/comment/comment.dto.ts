@@ -13,23 +13,6 @@ import { PaginationQueryDto } from '@/common';
 
 import { CommentStatus } from './comment.entity';
 
-export class CommentPageQueryDto extends PaginationQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  postId?: number;
-
-  @IsOptional()
-  @IsEnum(CommentStatus)
-  status?: CommentStatus;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  keyword?: string;
-}
-
 export class CommentAdminPageQueryDto {
   @IsOptional()
   @Type(() => Number)

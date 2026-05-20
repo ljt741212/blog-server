@@ -1,14 +1,20 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
-import archiver from 'archiver';
-import type { Response } from 'express';
 import * as fs from 'fs';
 import * as fsp from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import * as readline from 'readline';
 import { PassThrough } from 'stream';
+
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import archiver from 'archiver';
 import { DataSource } from 'typeorm';
 import * as unzipper from 'unzipper';
+
+import type { Response } from 'express';
 
 type ImportMode = 'truncate';
 
@@ -66,7 +72,10 @@ export class DataTransferService {
 
       res.status(200);
       res.setHeader('Content-Type', 'application/zip');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${fileName}"`,
+      );
 
       const zip = archiver('zip', { zlib: { level: 9 } });
       zip.on('error', (err) => {
@@ -74,9 +83,9 @@ export class DataTransferService {
       });
       zip.pipe(res);
 
-      const rawTables: Array<Record<string, unknown>> = await runner.query(
+      const rawTables = (await runner.query(
         `SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'`,
-      );
+      )) as Array<Record<string, unknown>>;
 
       const excluded = new Set(['migrations', 'typeorm_metadata']);
       const tableNames = rawTables
@@ -99,9 +108,9 @@ export class DataTransferService {
       };
 
       for (const table of tableNames) {
-        const [{ cnt }]: Array<{ cnt: number }> = await runner.query(
+        const [{ cnt }] = (await runner.query(
           `SELECT COUNT(*) as cnt FROM ${quoteId(table)}`,
-        );
+        )) as Array<{ cnt: number }>;
         meta.tables.push({ name: table, rows: Number(cnt ?? 0) });
       }
 
@@ -112,16 +121,16 @@ export class DataTransferService {
         const entryStream = new PassThrough();
         zip.append(entryStream, { name: `tables/${table}.jsonl` });
 
-        const [{ cnt }]: Array<{ cnt: number }> = await runner.query(
+        const [{ cnt }] = (await runner.query(
           `SELECT COUNT(*) as cnt FROM ${quoteId(table)}`,
-        );
+        )) as Array<{ cnt: number }>;
         const total = Number(cnt ?? 0);
 
         for (let offset = 0; offset < total; offset += chunkSize) {
-          const rows: Array<Record<string, unknown>> = await runner.query(
+          const rows = (await runner.query(
             `SELECT * FROM ${quoteId(table)} LIMIT ? OFFSET ?`,
             [chunkSize, offset],
-          );
+          )) as Array<Record<string, unknown>>;
           for (const row of rows) {
             entryStream.write(`${JSON.stringify(row, jsonReplacer)}\n`);
           }
@@ -131,7 +140,7 @@ export class DataTransferService {
       }
 
       await zip.finalize();
-    } catch (e) {
+    } catch {
       throw new InternalServerErrorException('导出失败');
     } finally {
       await runner.release();
@@ -143,7 +152,9 @@ export class DataTransferService {
       throw new BadRequestException('仅支持 truncate 导入模式');
     }
 
-    const workDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'blog-data-import-'));
+    const workDir = await fsp.mkdtemp(
+      path.join(os.tmpdir(), 'blog-data-import-'),
+    );
     try {
       await fs
         .createReadStream(zipPath)
@@ -200,7 +211,7 @@ export class DataTransferService {
             const params: unknown[] = [];
             for (const row of batch) {
               for (const col of columns) {
-                const v = (row as Record<string, unknown>)[col];
+                const v = row[col];
                 params.push(typeof v === 'undefined' ? null : v);
               }
             }
@@ -244,4 +255,3 @@ export class DataTransferService {
     }
   }
 }
-

@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import config from './config';
+import { AnnouncementModule } from './modules/announcement/announcement.module';
 import { CategoryModule } from './modules/category/category.module';
 import { ChangelogModule } from './modules/changelog/changelog.module';
 import { CommentModule } from './modules/comment/comment.module';
@@ -20,6 +21,7 @@ import { SettingModule } from './modules/setting/setting.module';
 import { TagModule } from './modules/tag/tag.module';
 import { UserModule } from './modules/user/user.module';
 import { VisitorModule } from './modules/visitor/visitor.module';
+import { AuthModule } from './shared/auth/auth.module';
 import { DatabaseModule } from './shared/database/database.module';
 import { EntitiesModule } from './shared/database/entities.module';
 
@@ -35,8 +37,10 @@ import { EntitiesModule } from './shared/database/entities.module';
       ],
       load: [...Object.values(config)],
     }),
+    AuthModule,
     DatabaseModule,
     EntitiesModule,
+    AnnouncementModule,
     SeoSettingModule,
     FriendLinkModule,
     GuestMessageModule,

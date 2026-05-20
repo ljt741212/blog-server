@@ -2,17 +2,16 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
-import { paginateQueryBuilderForAdmin, PaginationQueryDto } from '@/common';
+import { paginateQueryBuilderForAdmin } from '@/common';
 import { Category } from '@/modules/category/category.entity';
 import { Tag } from '@/modules/tag/tag.entity';
+import { AuthUtil } from '@/shared/auth/auth.util';
 
-import { PostListQueryDto, PostPageQueryDto, SavePostDto } from './post.dto';
+import { PostPageQueryDto, SavePostDto } from './post.dto';
 import { Post, PostStatus } from './post.entity';
 
 @Injectable()
@@ -24,34 +23,19 @@ export class PostService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Tag)
     private readonly tagRepository: Repository<Tag>,
-    private readonly jwtService: JwtService,
+    private readonly authUtil: AuthUtil,
   ) {}
 
-  private extractUserId(authorization?: string): number {
-    if (!authorization) throw new UnauthorizedException('未提供登录凭证');
-    const token = authorization.replace(/^Bearer\s+/i, '').trim();
-    if (!token) throw new UnauthorizedException('未提供登录凭证');
-    try {
-      const payload: { sub?: number; id?: number } =
-        this.jwtService.verify(token);
-      const userId = payload?.sub ?? payload?.id;
-      if (userId == null) throw new UnauthorizedException('登录信息无效');
-      return Number(userId);
-    } catch {
-      throw new UnauthorizedException('登录已失效，请重新登录');
-    }
-  }
-
-  async paginate(query: PostListQueryDto) {
+  async paginateForAdmin(query: PostPageQueryDto) {
     const qb = this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
       .leftJoinAndSelect('post.tags', 'tag')
       .leftJoinAndSelect('post.user', 'user');
 
-    if (query.keyword) {
+    if (query.searchValue) {
       qb.andWhere('(post.title LIKE :kw OR post.summary LIKE :kw)', {
-        kw: `%${query.keyword}%`,
+        kw: `%${query.searchValue}%`,
       });
     }
 
@@ -60,10 +44,7 @@ export class PostService {
     }
 
     qb.orderBy('post.createdAt', 'DESC');
-    const page = await paginateQueryBuilderForAdmin(
-      qb,
-      query as PaginationQueryDto,
-    );
+    const page = await paginateQueryBuilderForAdmin(qb, query);
 
     return {
       ...page,
@@ -71,22 +52,12 @@ export class PostService {
     };
   }
 
-  async paginateForAdmin(query: PostPageQueryDto) {
-    const normalized: PostListQueryDto = {
-      page: query.current ?? 1,
-      limit: query.pageSize ?? 10,
-      keyword: query.searchValue,
-      status: query.status,
-    };
-    return this.paginate(normalized);
-  }
-
   async findAll() {
     const posts = await this.postRepository.find({
       relations: ['category', 'tags', 'user'],
       order: { createdAt: 'DESC' },
     });
-    return posts.map((p) => this.buildAdminPost(p));
+    return posts.map((p) => this.buildPublicPost(p));
   }
 
   async findOne(id: number) {
@@ -100,40 +71,7 @@ export class PostService {
 
   async findDetail(id: number) {
     const post = await this.findOne(id);
-    return {
-      id: String(post.id),
-      title: post.title,
-      content: post.content,
-      summary: post.summary,
-      coverImage: post.coverImage,
-      publishTime: post.publishTime,
-      views: post.views ?? 0,
-      likes: post.likes ?? 0,
-      category: post.category
-        ? {
-            id: post.category.id,
-            name: post.category.name,
-            description: post.category.description,
-          }
-        : null,
-      tags: (post.tags || []).map((t) => ({
-        id: t.id,
-        name: t.name,
-        description: t.description,
-      })),
-      author: post.user
-        ? {
-            id: post.user.id,
-            username: post.user.username,
-            nickname: post.user.nickname,
-            avatar: post.user.avatar,
-            bio: post.user.bio,
-          }
-        : null,
-      status: post.status,
-      createdAt: post.createdAt,
-      updatedAt: post.updatedAt,
-    };
+    return this.buildPublicPost(post);
   }
 
   async create(dto: SavePostDto, authorization?: string) {
@@ -148,7 +86,7 @@ export class PostService {
       publishTime,
     } = dto;
 
-    const userId = this.extractUserId(authorization);
+    const userId = this.authUtil.extractUserId(authorization);
 
     await this.ensureCategoryExists(categoryId);
     const tags = tagIds?.length
@@ -268,6 +206,43 @@ export class PostService {
       where: { id: categoryId },
     });
     if (!category) throw new BadRequestException('分类不存在');
+  }
+
+  private buildPublicPost(post: Post) {
+    return {
+      id: String(post.id),
+      title: post.title,
+      content: post.content,
+      summary: post.summary,
+      coverImage: post.coverImage,
+      publishTime: post.publishTime,
+      views: post.views ?? 0,
+      likes: post.likes ?? 0,
+      category: post.category
+        ? {
+            id: post.category.id,
+            name: post.category.name,
+            description: post.category.description,
+          }
+        : null,
+      tags: (post.tags || []).map((t) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+      })),
+      author: post.user
+        ? {
+            id: post.user.id,
+            username: post.user.username,
+            nickname: post.user.nickname,
+            avatar: post.user.avatar,
+            bio: post.user.bio,
+          }
+        : null,
+      status: post.status,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+    };
   }
 
   private buildAdminPost(post: Post) {

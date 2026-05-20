@@ -25,6 +25,7 @@ export class TagController {
   constructor(private readonly tagService: TagService) {}
 
   @Get('page')
+  @UseGuards(JwtAuthGuard)
   paginate(@Query() query: TagPageQueryDto) {
     return this.tagService.paginateForAdmin(query);
   }
@@ -42,8 +43,7 @@ export class TagController {
   @Post()
   @UseGuards(JwtAuthGuard)
   save(@Body() dto: SaveTagDto) {
-    if (dto.id) return this.tagService.update(dto.id, dto);
-    return this.tagService.create(dto);
+    return this.tagService.save(dto);
   }
 
   @Patch(':id')

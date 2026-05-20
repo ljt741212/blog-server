@@ -18,11 +18,11 @@ import { OssService } from './oss.service';
 import type { Response } from 'express';
 
 @Controller('oss')
-@UseGuards(JwtAuthGuard)
 export class OssController {
   constructor(private readonly ossService: OssService) {}
 
   @Post('upload')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   upload(
     @UploadedFile() file: Express.Multer.File,
@@ -32,6 +32,7 @@ export class OssController {
   }
 
   @Get('sign-url')
+  @UseGuards(JwtAuthGuard)
   signUrl(@Query() query: SignUrlQueryDto) {
     return {
       url: this.ossService.signUrl(query.key, query.expires),

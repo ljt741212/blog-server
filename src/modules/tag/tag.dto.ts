@@ -8,22 +8,7 @@ import {
   Min,
 } from 'class-validator';
 
-import { PaginationQueryDto } from '@/common';
-
 import { TagStatus } from './tag.entity';
-
-export class TagListQueryDto extends PaginationQueryDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  keyword?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @IsEnum(TagStatus)
-  status?: TagStatus;
-}
 
 export class TagPageQueryDto {
   @IsOptional()

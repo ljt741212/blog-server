@@ -23,7 +23,7 @@ export class User extends CommonEntity {
   @Column({ type: 'varchar', length: 50, nullable: true, comment: '昵称' })
   nickname: string;
 
-  @Column({ type: 'varchar', length: 100, comment: '密码', default: '123456' })
+  @Column({ type: 'varchar', length: 100, comment: '密码' })
   password: string;
 
   @Column({ type: 'varchar', length: 100, unique: true, comment: '邮箱' })

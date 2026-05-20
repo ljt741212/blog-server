@@ -40,6 +40,7 @@ export class GuestMessageController {
   }
 
   @Get('page')
+  @UseGuards(JwtAuthGuard)
   paginate(@Query() query: GuestMessageAdminPageQueryDto) {
     return this.guestMessageService.paginateForAdmin(query);
   }

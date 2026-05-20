@@ -6,11 +6,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { paginateQueryBuilderForAdmin, PaginationQueryDto } from '@/common';
+import { paginateQueryBuilderForAdmin } from '@/common';
 
 import {
   CreateGuestMessageDto,
-  GuestMessagePageQueryDto,
+  GuestMessageAdminPageQueryDto,
   GuestMessageListQueryDto,
 } from './guest-message.dto';
 import { GuestMessage, GuestMessageStatus } from './guest-message.entity';
@@ -38,10 +38,10 @@ export class GuestMessageService {
       status: GuestMessageStatus.PENDING,
     });
     const saved = await this.guestMessageRepository.save(message);
-    return this.guestMessageRepository.findOne({
+    return this.guestMessageRepository.findOneOrFail({
       where: { id: saved.id },
       relations: ['user', 'visitor'],
-    }) as Promise<GuestMessage>;
+    });
   }
 
   async updateStatus(id: number, status: GuestMessageStatus): Promise<boolean> {
@@ -54,55 +54,30 @@ export class GuestMessageService {
     return true;
   }
 
-  async paginate(query: GuestMessagePageQueryDto) {
-    const normalized: PaginationQueryDto & {
-      status?: GuestMessageStatus;
-      keyword?: string;
-    } = {
-      page: query.page ?? 1,
-      limit: query.limit ?? 10,
-      status: query.status,
-      keyword: query.keyword,
-    };
-
+  async paginateForAdmin(query: GuestMessageAdminPageQueryDto) {
     const qb = this.guestMessageRepository
       .createQueryBuilder('guest_message')
       .leftJoinAndSelect('guest_message.user', 'user')
       .leftJoinAndSelect('guest_message.visitor', 'visitor');
 
-    if (normalized.status !== undefined) {
+    if (query.status !== undefined) {
       qb.andWhere('guest_message.status = :status', {
-        status: normalized.status,
+        status: query.status,
       });
     }
-    if (normalized.keyword) {
+    if (query.searchValue) {
       qb.andWhere(
         '(guest_message.content LIKE :kw OR guest_message.nickname LIKE :kw OR guest_message.email LIKE :kw)',
-        { kw: `%${normalized.keyword}%` },
+        { kw: `%${query.searchValue}%` },
       );
     }
 
     qb.orderBy('guest_message.createdAt', 'DESC');
-    const page = await paginateQueryBuilderForAdmin(qb, normalized);
+    const page = await paginateQueryBuilderForAdmin(qb, query);
     return {
       ...page,
       items: page.items.map((m) => this.buildGuestMessageItem(m)),
     };
-  }
-
-  async paginateForAdmin(query: {
-    current?: number;
-    pageSize?: number;
-    status?: GuestMessageStatus;
-    searchValue?: string;
-  }) {
-    const normalized: GuestMessagePageQueryDto = {
-      page: query.current ?? 1,
-      limit: query.pageSize ?? 10,
-      status: query.status,
-      keyword: query.searchValue,
-    };
-    return this.paginate(normalized);
   }
 
   async findList(query: GuestMessageListQueryDto) {

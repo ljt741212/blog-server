@@ -24,6 +24,7 @@ export class ChangelogController {
   constructor(private readonly changelogService: ChangelogService) {}
 
   @Get('page')
+  @UseGuards(JwtAuthGuard)
   paginate(@Query() query: ChangelogPageQueryDto) {
     return this.changelogService.paginateForAdmin(query);
   }

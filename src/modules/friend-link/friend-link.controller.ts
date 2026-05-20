@@ -8,20 +8,11 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { Type } from 'class-transformer';
-import { IsInt, Min } from 'class-validator';
 
 import { JwtAuthGuard } from '@/common';
 
-import { SaveFriendLinkDto } from './friend-link.dto';
+import { IdParamDto, SaveFriendLinkDto } from './friend-link.dto';
 import { FriendLinkService } from './friend-link.service';
-
-class IdParamDto {
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  id: number;
-}
 
 @Controller('friend-links')
 export class FriendLinkController {

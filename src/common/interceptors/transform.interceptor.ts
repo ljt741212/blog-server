@@ -27,8 +27,8 @@ export class TransformInterceptor implements NestInterceptor {
 
     if (bypass) return next.handle();
 
-    return next.handle().pipe(
-      map((data) => new ResOp(HttpStatus.OK, data ?? null)),
-    );
+    return next
+      .handle()
+      .pipe(map((data) => new ResOp(HttpStatus.OK, data ?? null)));
   }
 }

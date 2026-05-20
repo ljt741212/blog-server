@@ -10,25 +10,7 @@ import {
   Min,
 } from 'class-validator';
 
-import { PaginationQueryDto } from '@/common';
-
 import { ChangelogType } from './changelog.entity';
-
-export class ChangelogListQueryDto extends PaginationQueryDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  keyword?: string;
-
-  @IsOptional()
-  @IsEnum(ChangelogType)
-  type?: ChangelogType;
-
-  @IsOptional()
-  @Type(() => Boolean)
-  @IsBoolean()
-  isPublished?: boolean;
-}
 
 export class ChangelogPageQueryDto {
   @IsOptional()

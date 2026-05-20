@@ -32,6 +32,7 @@ export class PostController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll() {
     return this.postService.findAll();
   }

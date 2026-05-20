@@ -27,6 +27,7 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Get('page')
+  @UseGuards(JwtAuthGuard)
   paginate(@Query() query: CategoryPageQueryDto) {
     return this.categoryService.paginateForAdmin(query);
   }
@@ -44,8 +45,7 @@ export class CategoryController {
   @Post()
   @UseGuards(JwtAuthGuard)
   save(@Body() dto: SaveCategoryDto) {
-    if (dto.id) return this.categoryService.update(dto.id, dto);
-    return this.categoryService.create(dto);
+    return this.categoryService.save(dto);
   }
 
   @Patch(':id')
