@@ -33,8 +33,8 @@ export class PostController {
   }
 
   @Get()
-  findAll() {
-    return this.postService.findAll();
+  findAll(@Query() query: PostPageQueryDto) {
+    return this.postService.findAll(query);
   }
 
   @Get(':id')

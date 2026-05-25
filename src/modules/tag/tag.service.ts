@@ -93,7 +93,15 @@ export class TagService {
 
   async remove(id: number) {
     const tag = await this.findOne(id);
-    await this.tagRepository.remove(tag);
+    try {
+      await this.tagRepository.remove(tag);
+    } catch (e: unknown) {
+      const err = e as { errno?: number };
+      if (err?.errno === 1451) {
+        throw new BadRequestException('该标签下有文章，无法删除');
+      }
+      throw e;
+    }
     return true;
   }
 }

@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
+import { Visitor } from '@/modules/visitor/visitor.entity';
 
 import {
   CreateGuestMessageDto,
@@ -20,13 +21,30 @@ export class GuestMessageService {
   constructor(
     @InjectRepository(GuestMessage)
     private readonly guestMessageRepository: Repository<GuestMessage>,
+    @InjectRepository(Visitor)
+    private readonly visitorRepository: Repository<Visitor>,
   ) {}
 
   async create(dto: CreateGuestMessageDto): Promise<GuestMessage> {
-    const { content, nickname, email, userId, visitorId } = dto;
+    const { content, nickname, email, userId, visitorId, visitorUuid } = dto;
 
-    if (!userId && !visitorId) {
-      throw new BadRequestException('请提供 userId 或 visitorId');
+    let resolvedVisitorId = visitorId;
+    if (!userId && !resolvedVisitorId && visitorUuid) {
+      let visitor = await this.visitorRepository.findOne({
+        where: [{ visitorId: visitorUuid }, { fingerprint: visitorUuid }],
+      });
+      if (!visitor) {
+        visitor = this.visitorRepository.create({
+          visitorId: visitorUuid,
+          fingerprint: visitorUuid,
+        });
+        visitor = await this.visitorRepository.save(visitor);
+      }
+      resolvedVisitorId = visitor.id;
+    }
+
+    if (!userId && !resolvedVisitorId) {
+      throw new BadRequestException('请提供 userId、visitorId 或 visitorUuid');
     }
 
     const message = this.guestMessageRepository.create({
@@ -34,7 +52,7 @@ export class GuestMessageService {
       nickname: nickname ?? undefined,
       email: email ?? undefined,
       userId: userId ?? undefined,
-      visitorId: visitorId ?? undefined,
+      visitorId: resolvedVisitorId ?? undefined,
       status: GuestMessageStatus.PENDING,
     });
     const saved = await this.guestMessageRepository.save(message);

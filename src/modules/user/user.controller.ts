@@ -38,7 +38,6 @@ export class UserController {
   }
 
   @Get('super-admin')
-  @UseGuards(JwtAuthGuard)
   async getSuperAdmin() {
     return this.userService.findSuperAdmin();
   }

@@ -52,13 +52,27 @@ export class PostService {
     };
   }
 
-  async findAll() {
-    const posts = await this.postRepository.find({
-      where: { status: PostStatus.PUBLISHED },
-      relations: ['category', 'tags', 'user'],
-      order: { createdAt: 'DESC' },
-    });
-    return posts.map((p) => this.buildPublicPost(p));
+  async findAll(query?: PostPageQueryDto) {
+    const qb = this.postRepository
+      .createQueryBuilder('post')
+      .leftJoinAndSelect('post.category', 'category')
+      .leftJoinAndSelect('post.tags', 'tag')
+      .leftJoinAndSelect('post.user', 'user')
+      .where('post.status = :status', { status: PostStatus.PUBLISHED });
+
+    if (query?.searchValue) {
+      qb.andWhere('(post.title LIKE :kw OR post.summary LIKE :kw)', {
+        kw: `%${query.searchValue}%`,
+      });
+    }
+
+    qb.orderBy('post.isTop', 'DESC').addOrderBy('post.createdAt', 'DESC');
+
+    const page = await paginateQueryBuilderForAdmin(qb, query || {});
+    return {
+      ...page,
+      items: page.items.map((p: Post) => this.buildPublicPost(p)),
+    };
   }
 
   async findOne(id: number) {
@@ -262,6 +276,7 @@ export class PostService {
       summary: post.summary,
       coverImage: post.coverImage,
       status: post.status,
+      isTop: post.isTop,
       categoryId: post.category?.id,
       category: post.category?.name,
       tagIds: post.tags?.map((t) => t.id) ?? [],

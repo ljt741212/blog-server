@@ -63,6 +63,11 @@ export class CreateGuestMessageDto {
   @IsInt()
   @Min(1)
   visitorId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  visitorUuid?: string;
 }
 
 export class UpdateGuestMessageStatusDto {

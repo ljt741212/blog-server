@@ -115,9 +115,6 @@ export class VisitorService {
         ? [{ visitorId: dto.visitorId }, { fingerprint: dto.visitorId }]
         : [{ ip }],
     });
-    if (!visitor) {
-      visitor = await this.visitorRepo.findOne({ where: { ip } });
-    }
 
     const now = new Date();
     if (!visitor) {
