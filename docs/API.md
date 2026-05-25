@@ -14,9 +14,24 @@
 
 ```typescript
 {
-  code: number;        // 状态码，200 表示成功
-  message: string;     // 响应消息
-  data: any;          // 响应数据
+  code: number; // 状态码，200 表示成功
+  message: string; // 响应消息
+  data: any; // 响应数据
+}
+```
+
+分页接口的 `data` 格式：
+
+```typescript
+{
+  items: T[];
+  meta: {
+    totalItems: number;
+    itemCount: number;
+    itemsPerPage: number;
+    totalPages: number;
+    currentPage: number;
+  };
 }
 ```
 
@@ -28,6 +43,8 @@
 Authorization: Bearer <token>
 ```
 
+---
+
 ## API 列表
 
 ### 1. 用户模块 (`/api/users`)
@@ -36,9 +53,10 @@ Authorization: Bearer <token>
 
 **接口**: `POST /api/users/login`
 
-**描述**: 用户登录，获取 JWT token
+**描述**: 用户登录，获取 JWT token（无需认证）
 
 **请求体**:
+
 ```json
 {
   "username": "string",
@@ -46,45 +64,29 @@ Authorization: Bearer <token>
 }
 ```
 
-**响应**:
-```json
-{
-  "code": 200,
-  "message": "登录成功",
-  "data": {
-    "token": "jwt_token_string",
-    "user": {
-      "id": 1,
-      "username": "admin",
-      "email": "admin@example.com"
-    }
-  }
-}
-```
+---
 
 #### 1.2 获取当前用户信息
 
 **接口**: `GET /api/users/me`
 
-**描述**: 获取当前登录用户信息
+**描述**: 获取当前登录用户信息（可选认证，携带 token 返回完整信息）
+
+**请求头**: `Authorization: Bearer <token>`（可选）
+
+---
+
+#### 1.3 获取超级管理员
+
+**接口**: `GET /api/users/super-admin`
+
+**描述**: 获取超级管理员信息（需认证）
 
 **请求头**: `Authorization: Bearer <token>`
 
-**响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "id": 1,
-    "username": "admin",
-    "email": "admin@example.com",
-    "avatar": "avatar_url"
-  }
-}
-```
+---
 
-#### 1.3 修改密码
+#### 1.4 修改密码
 
 **接口**: `PUT /api/users/change-password`
 
@@ -93,6 +95,7 @@ Authorization: Bearer <token>
 **请求头**: `Authorization: Bearer <token>`
 
 **请求体**:
+
 ```json
 {
   "oldPassword": "string",
@@ -100,7 +103,9 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 1.4 分页查询用户
+---
+
+#### 1.5 分页查询用户
 
 **接口**: `GET /api/users/page`
 
@@ -109,46 +114,68 @@ Authorization: Bearer <token>
 **请求头**: `Authorization: Bearer <token>`
 
 **查询参数**:
-- `page`: 页码（默认: 1）
-- `limit`: 每页数量（默认: 10）
 
-**响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "items": [],
-    "meta": {
-      "totalItems": 100,
-      "itemCount": 10,
-      "itemsPerPage": 10,
-      "totalPages": 10,
-      "currentPage": 1
-    }
-  }
-}
-```
+- `current`: 页码（默认: 1）
+- `pageSize`: 每页数量（默认: 10）
+- `searchValue`: 搜索关键词（可选）
 
-#### 1.5 创建用户
+---
+
+#### 1.6 获取用户详情
+
+**接口**: `GET /api/users/:id`
+
+**描述**: 根据 ID 获取用户详情（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**路径参数**: `id` - 用户 ID
+
+---
+
+#### 1.7 创建用户
 
 **接口**: `POST /api/users`
 
-**描述**: 创建新用户（需认证）
+**描述**: 创建新用户（需认证）。如果请求体中 `id > 0`，则转为更新操作。
 
 **请求头**: `Authorization: Bearer <token>`
 
 **请求体**:
+
 ```json
 {
   "username": "string",
   "password": "string",
   "email": "string",
-  "avatar": "string"
+  "nickname": "string",
+  "phone": "string",
+  "wechat": "string",
+  "avatar": "string",
+  "bio": "string",
+  "github": "string",
+  "gender": 0,
+  "role": 0
 }
 ```
 
-#### 1.6 更新用户
+| 字段     | 类型   | 必填 | 说明                         |
+| -------- | ------ | ---- | ---------------------------- |
+| username | string | 是   | 用户名                       |
+| password | string | 是   | 密码（至少 4 位）            |
+| email    | string | 是   | 邮箱                         |
+| nickname | string | 否   | 昵称                         |
+| phone    | string | 否   | 手机号                       |
+| wechat   | string | 否   | 微信号                       |
+| avatar   | string | 否   | 头像 URL                     |
+| bio      | string | 否   | 简介                         |
+| github   | string | 否   | GitHub 账号                  |
+| gender   | number | 否   | 性别：0-女，1-男             |
+| role     | number | 否   | 角色：0-管理员，1-超级管理员 |
+
+---
+
+#### 1.8 更新用户
 
 **接口**: `PUT /api/users/:id`
 
@@ -158,16 +185,11 @@ Authorization: Bearer <token>
 
 **路径参数**: `id` - 用户 ID
 
-**请求体**:
-```json
-{
-  "username": "string",
-  "email": "string",
-  "avatar": "string"
-}
-```
+**请求体**: 同创建用户（所有字段可选）
 
-#### 1.7 删除用户
+---
+
+#### 1.9 删除用户
 
 **接口**: `DELETE /api/users/:id`
 
@@ -179,118 +201,129 @@ Authorization: Bearer <token>
 
 ---
 
+#### 1.10 删除用户（POST 方式）
+
+**接口**: `POST /api/users/:id/delete`
+
+**描述**: 删除用户，功能同 DELETE（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**路径参数**: `id` - 用户 ID
+
+---
+
 ### 2. 文章模块 (`/api/posts`)
 
-#### 2.1 获取所有文章
+#### 2.1 获取所有已发布文章
 
 **接口**: `GET /api/posts`
 
-**描述**: 获取所有已发布的文章列表
+**描述**: 获取所有已发布文章列表（无需认证，仅返回 status=published）
 
 **响应**:
+
 ```json
 {
   "code": 200,
   "message": "success",
   "data": [
     {
-      "id": 1,
+      "id": "1",
       "title": "文章标题",
       "content": "文章内容",
       "summary": "文章摘要",
-      "cover": "封面图片URL",
+      "coverImage": "封面图片URL",
+      "publishTime": "2024-01-01T00:00:00.000Z",
       "views": 100,
       "likes": 10,
-      "isTop": false,
+      "category": {
+        "id": 1,
+        "name": "分类名称",
+        "description": "分类描述"
+      },
+      "tags": [{ "id": 1, "name": "标签名称", "description": "标签描述" }],
+      "author": {
+        "id": 1,
+        "username": "作者",
+        "nickname": "昵称",
+        "avatar": "头像URL",
+        "bio": "简介"
+      },
       "status": "published",
-      "category": {},
-      "tags": [],
-      "createdAt": "2024-01-01T00:00:00.000Z"
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
     }
   ]
 }
 ```
 
-#### 2.2 分页查询文章
+---
+
+#### 2.2 分页查询文章（管理）
 
 **接口**: `GET /api/posts/page`
 
-**描述**: 分页查询文章（管理员视图）
+**描述**: 分页查询文章列表，包含所有状态（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 **查询参数**:
-- `page`: 页码（默认: 1）
-- `limit`: 每页数量（默认: 10）
-- `status`: 文章状态（可选）
-- `categoryId`: 分类 ID（可选）
-- `keyword`: 搜索关键词（可选）
 
-**响应**: 分页数据格式
+- `current`: 页码（默认: 1）
+- `pageSize`: 每页数量（默认: 10）
+- `searchValue`: 搜索关键词（标题/摘要，可选）
+- `status`: 文章状态筛选（可选）
+
+---
 
 #### 2.3 获取文章详情
 
 **接口**: `GET /api/posts/:id`
 
-**描述**: 根据 ID 获取文章详情
+**描述**: 根据 ID 获取已发布文章详情（无需认证，仅返回 status=published）
 
 **路径参数**: `id` - 文章 ID
 
-**响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": {
-    "id": 1,
-    "title": "文章标题",
-    "content": "文章完整内容",
-    "summary": "文章摘要",
-    "cover": "封面图片URL",
-    "views": 100,
-    "likes": 10,
-    "isTop": false,
-    "status": "published",
-    "category": {
-      "id": 1,
-      "name": "分类名称"
-    },
-    "tags": [
-      {
-        "id": 1,
-        "name": "标签名称"
-      }
-    ],
-    "author": {
-      "id": 1,
-      "username": "作者"
-    },
-    "createdAt": "2024-01-01T00:00:00.000Z",
-    "updatedAt": "2024-01-01T00:00:00.000Z"
-  }
-}
-```
+---
 
 #### 2.4 创建/更新文章
 
 **接口**: `POST /api/posts`
 
-**描述**: 创建或更新文章（需认证）
+**描述**: 创建或更新文章（需认证）。如果请求体中 `id > 0`，则更新已有文章。
 
 **请求头**: `Authorization: Bearer <token>`
 
 **请求体**:
+
 ```json
 {
-  "id": 1,                    // 可选，存在则更新，不存在则创建
+  "id": 1,
   "title": "文章标题",
   "content": "文章内容",
   "summary": "文章摘要",
-  "cover": "封面图片URL",
+  "coverImage": "封面图片URL",
   "categoryId": 1,
   "tagIds": [1, 2, 3],
-  "status": "draft",          // draft | published
-  "isTop": false
+  "status": "draft",
+  "publishTime": "2024-01-01T00:00:00.000Z"
 }
 ```
+
+| 字段        | 类型     | 必填 | 说明                         |
+| ----------- | -------- | ---- | ---------------------------- |
+| id          | number   | 否   | 文章 ID，存在则更新          |
+| title       | string   | 是   | 标题（最大 200 字符）        |
+| content     | string   | 是   | 内容                         |
+| summary     | string   | 否   | 摘要（最大 500 字符）        |
+| coverImage  | string   | 否   | 封面图片 URL                 |
+| categoryId  | number   | 是   | 分类 ID                      |
+| tagIds      | number[] | 否   | 标签 ID 数组                 |
+| status      | string   | 否   | draft / published / archived |
+| publishTime | string   | 否   | 发布时间（ISO 8601）         |
+
+---
 
 #### 2.5 更新文章状态
 
@@ -303,27 +336,36 @@ Authorization: Bearer <token>
 **路径参数**: `id` - 文章 ID
 
 **请求体**:
+
 ```json
 {
-  "status": "published"       // draft | published
+  "status": "published"
 }
 ```
+
+`status` 取值: `draft` / `published` / `archived`
+
+---
 
 #### 2.6 增加浏览量
 
 **接口**: `PUT /api/posts/:id/views`
 
-**描述**: 增加文章浏览量
+**描述**: 增加文章浏览量（无需认证）
 
 **路径参数**: `id` - 文章 ID
+
+---
 
 #### 2.7 增加点赞数
 
 **接口**: `PUT /api/posts/:id/likes`
 
-**描述**: 增加文章点赞数
+**描述**: 增加文章点赞数（无需认证）
 
 **路径参数**: `id` - 文章 ID
+
+---
 
 #### 2.8 设置/取消置顶
 
@@ -336,11 +378,14 @@ Authorization: Bearer <token>
 **路径参数**: `id` - 文章 ID
 
 **请求体**:
+
 ```json
 {
   "isTop": true
 }
 ```
+
+---
 
 #### 2.9 删除文章
 
@@ -360,7 +405,9 @@ Authorization: Bearer <token>
 
 **接口**: `GET /api/categories`
 
-**描述**: 获取所有分类列表
+**描述**: 获取所有分类列表（无需认证）
+
+---
 
 #### 3.2 分页查询分类
 
@@ -368,56 +415,91 @@ Authorization: Bearer <token>
 
 **描述**: 分页查询分类（需认证）
 
+**请求头**: `Authorization: Bearer <token>`
+
 **查询参数**:
-- `page`: 页码
-- `limit`: 每页数量
-- `status`: 状态筛选
+
+- `current`: 页码
+- `pageSize`: 每页数量
+- `status`: 状态筛选（0-禁用，1-启用）
+
+---
 
 #### 3.3 获取分类详情
 
 **接口**: `GET /api/categories/:id`
 
-**描述**: 根据 ID 获取分类详情
+**描述**: 根据 ID 获取分类详情（无需认证）
 
-#### 3.4 创建分类
+---
+
+#### 3.4 创建/更新分类
 
 **接口**: `POST /api/categories`
 
-**描述**: 创建分类（需认证）
+**描述**: 创建或更新分类（需认证）。如果请求体中 `id > 0`，则更新已有分类。
+
+**请求头**: `Authorization: Bearer <token>`
 
 **请求体**:
+
 ```json
 {
+  "id": 1,
   "name": "分类名称",
   "description": "分类描述",
-  "status": "active"
+  "status": 1
 }
 ```
 
-#### 3.5 更新分类
+| 字段        | 类型   | 必填 | 说明                |
+| ----------- | ------ | ---- | ------------------- |
+| id          | number | 否   | 分类 ID，存在则更新 |
+| name        | string | 是   | 分类名称            |
+| description | string | 否   | 分类描述            |
+| status      | number | 否   | 0-禁用，1-启用      |
+
+---
+
+#### 3.5 部分更新分类
 
 **接口**: `PATCH /api/categories/:id`
 
-**描述**: 更新分类信息（需认证）
+**描述**: 部分更新分类信息（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**路径参数**: `id` - 分类 ID
+
+---
 
 #### 3.6 更新分类状态
 
 **接口**: `PUT /api/categories/:id/status`
 
-**描述**: 更新分类状态（需认证）
+**描述**: 更新分类启用/禁用状态（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 **请求体**:
+
 ```json
 {
-  "status": "active"          // active | inactive
+  "status": 1
 }
 ```
+
+`status` 取值: `0`（禁用）/ `1`（启用）
+
+---
 
 #### 3.7 删除分类
 
 **接口**: `DELETE /api/categories/:id`
 
 **描述**: 删除分类（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 ---
 
@@ -427,7 +509,9 @@ Authorization: Bearer <token>
 
 **接口**: `GET /api/tags`
 
-**描述**: 获取所有标签列表
+**描述**: 获取所有标签列表（无需认证）
+
+---
 
 #### 4.2 分页查询标签
 
@@ -435,37 +519,71 @@ Authorization: Bearer <token>
 
 **描述**: 分页查询标签（需认证）
 
+**请求头**: `Authorization: Bearer <token>`
+
+**查询参数**:
+
+- `current`: 页码
+- `pageSize`: 每页数量
+- `status`: 状态筛选（0-禁用，1-启用）
+
+---
+
 #### 4.3 获取标签详情
 
 **接口**: `GET /api/tags/:id`
 
-**描述**: 根据 ID 获取标签详情
+**描述**: 根据 ID 获取标签详情（无需认证）
 
-#### 4.4 创建标签
+---
+
+#### 4.4 创建/更新标签
 
 **接口**: `POST /api/tags`
 
-**描述**: 创建标签（需认证）
+**描述**: 创建或更新标签（需认证）。如果请求体中 `id > 0`，则更新已有标签。
+
+**请求头**: `Authorization: Bearer <token>`
 
 **请求体**:
+
 ```json
 {
+  "id": 1,
   "name": "标签名称",
-  "color": "#ff0000"
+  "description": "标签描述",
+  "status": 1
 }
 ```
 
-#### 4.5 更新标签
+| 字段        | 类型   | 必填 | 说明                |
+| ----------- | ------ | ---- | ------------------- |
+| id          | number | 否   | 标签 ID，存在则更新 |
+| name        | string | 是   | 标签名称            |
+| description | string | 否   | 标签描述            |
+| status      | number | 否   | 0-禁用，1-启用      |
+
+---
+
+#### 4.5 部分更新标签
 
 **接口**: `PATCH /api/tags/:id`
 
-**描述**: 更新标签信息（需认证）
+**描述**: 部分更新标签信息（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**路径参数**: `id` - 标签 ID
+
+---
 
 #### 4.6 删除标签
 
 **接口**: `DELETE /api/tags/:id`
 
 **描述**: 删除标签（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 ---
 
@@ -475,59 +593,62 @@ Authorization: Bearer <token>
 
 **接口**: `POST /api/comments`
 
-**描述**: 创建文章评论
+**描述**: 创建文章评论（无需认证，登录用户或访客均可）
 
 **请求体**:
+
 ```json
 {
-  "postId": 1,
   "content": "评论内容",
-  "parentId": null,          // 可选，回复的评论 ID
-  "visitorId": "visitor_id"   // 可选，访客 ID
+  "postId": 1,
+  "parentId": null,
+  "userId": 1,
+  "visitorId": "visitor_id"
 }
 ```
 
-#### 5.2 分页查询评论
+| 字段      | 类型   | 必填 | 说明                       |
+| --------- | ------ | ---- | -------------------------- |
+| content   | string | 是   | 评论内容（最大 5000 字符） |
+| postId    | number | 是   | 所属文章 ID                |
+| parentId  | number | 否   | 父评论 ID（回复时使用）    |
+| userId    | number | 否   | 评论用户 ID（登录用户）    |
+| visitorId | string | 否   | 访客 ID（游客）            |
+
+---
+
+#### 5.2 分页查询评论（管理）
 
 **接口**: `GET /api/comments/page`
 
-**描述**: 分页查询评论（管理员视图）
+**描述**: 分页查询评论列表（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 **查询参数**:
-- `page`: 页码
-- `limit`: 每页数量
-- `status`: 状态筛选
+
+- `current`: 页码
+- `pageSize`: 每页数量
+- `postId`: 文章 ID 筛选（可选）
+- `status`: 状态筛选（可选）
+- `searchValue`: 搜索关键词（可选）
+
+---
 
 #### 5.3 根据文章查询评论
 
 **接口**: `GET /api/comments/by-post`
 
-**描述**: 根据文章 ID 查询评论列表
+**描述**: 根据文章 ID 查询评论列表（无需认证）
 
 **查询参数**:
-- `postId`: 文章 ID
 
-**响应**:
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": [
-    {
-      "id": 1,
-      "content": "评论内容",
-      "status": "approved",
-      "visitor": {
-        "id": "visitor_id",
-        "nickname": "访客昵称"
-      },
-      "parentId": null,
-      "replies": [],
-      "createdAt": "2024-01-01T00:00:00.000Z"
-    }
-  ]
-}
-```
+- `postId`: 文章 ID（必填）
+- `current`: 页码
+- `pageSize`: 每页数量
+- `approvedOnly`: 是否仅返回已审核评论（可选，默认 false）
+
+---
 
 #### 5.4 更新评论状态
 
@@ -535,18 +656,27 @@ Authorization: Bearer <token>
 
 **描述**: 更新评论审核状态（需认证）
 
+**请求头**: `Authorization: Bearer <token>`
+
 **请求体**:
+
 ```json
 {
-  "status": "approved"        // pending | approved | rejected
+  "status": "approved"
 }
 ```
+
+`status` 取值: `pending` / `approved` / `rejected`
+
+---
 
 #### 5.5 删除评论
 
 **接口**: `DELETE /api/comments/:id`
 
 **描述**: 删除评论（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 ---
 
@@ -556,12 +686,14 @@ Authorization: Bearer <token>
 
 **接口**: `POST /api/visitor/visit`
 
-**描述**: 记录访客访问信息
+**描述**: 记录访客访问信息，创建访问日志并更新在线时间（无需认证）
 
-**请求头**: 
+**请求头**:
+
 - `x-visitor-id` 或 `visitor-id`: 访客 ID（可选）
 
 **请求体**:
+
 ```json
 {
   "visitorId": "visitor_id",
@@ -571,19 +703,58 @@ Authorization: Bearer <token>
 }
 ```
 
-#### 6.2 获取所有访客
+---
+
+#### 6.2 心跳
+
+**接口**: `POST /api/visitor/heartbeat`
+
+**描述**: 更新访客在线时间，不创建访问日志。前端可定时调用以保持在线状态（无需认证）
+
+**请求头**:
+
+- `x-visitor-id` 或 `visitor-id`: 访客 ID（可选）
+
+**请求体**: 同 6.1
+
+---
+
+#### 6.3 获取所有访客
 
 **接口**: `GET /api/visitor`
 
 **描述**: 获取所有访客列表（需认证）
 
-#### 6.3 获取访客统计
+**请求头**: `Authorization: Bearer <token>`
+
+---
+
+#### 6.4 在线访客流（SSE）
+
+**接口**: `GET /api/visitor/online/stream`
+
+**描述**: 通过 SSE（Server-Sent Events）实时推送在线访客数据（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**查询参数**:
+
+- `minutes`: 统计最近 N 分钟内在线的访客（默认: 5）
+
+**响应类型**: `text/event-stream`
+
+---
+
+#### 6.5 访客统计
 
 **接口**: `GET /api/visitor/dashboard`
 
-**描述**: 获取访客统计数据（需认证）
+**描述**: 获取访客仪表板统计数据（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 **响应**:
+
 ```json
 {
   "code": 200,
@@ -605,17 +776,19 @@ Authorization: Bearer <token>
 
 **接口**: `POST /api/oss/upload`
 
-**描述**: 上传文件到 OSS（需认证）
+**描述**: 上传文件到阿里云 OSS（需认证）
 
 **请求头**: `Authorization: Bearer <token>`
 
 **请求类型**: `multipart/form-data`
 
 **表单字段**:
+
 - `file`: 文件
-- `dir`: 上传目录（可选，默认: uploads）
+- `dir`: 上传目录（可选）
 
 **响应**:
+
 ```json
 {
   "code": 200,
@@ -627,15 +800,22 @@ Authorization: Bearer <token>
 }
 ```
 
+---
+
 #### 7.2 获取签名 URL
 
 **接口**: `GET /api/oss/sign-url`
 
-**描述**: 获取 OSS 文件的签名 URL（需认证）
+**描述**: 获取 OSS 文件的签名访问 URL（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 **查询参数**:
-- `key`: 文件 key
-- `expires`: 过期时间（秒，可选，默认: 600）
+
+- `key`: 文件 key（必填）
+- `expires`: 过期时间，秒（可选，默认: 600）
+
+---
 
 #### 7.3 下载文件
 
@@ -643,8 +823,13 @@ Authorization: Bearer <token>
 
 **描述**: 下载 OSS 文件（需认证）
 
+**请求头**: `Authorization: Bearer <token>`
+
 **查询参数**:
-- `key`: 文件 key
+
+- `key`: 文件 key（必填）
+
+**响应类型**: 文件流（`application/octet-stream` 或文件实际类型）
 
 ---
 
@@ -654,7 +839,9 @@ Authorization: Bearer <token>
 
 **接口**: `GET /api/friend-links`
 
-**描述**: 获取所有友链列表
+**描述**: 获取所有友链列表（无需认证）
+
+---
 
 #### 8.2 创建友链
 
@@ -662,16 +849,25 @@ Authorization: Bearer <token>
 
 **描述**: 创建友链（需认证）
 
+**请求头**: `Authorization: Bearer <token>`
+
 **请求体**:
+
 ```json
 {
   "name": "友链名称",
   "url": "https://example.com",
-  "logo": "logo_url",
-  "description": "友链描述",
-  "status": "active"
+  "description": "友链描述"
 }
 ```
+
+| 字段        | 类型   | 必填 | 说明     |
+| ----------- | ------ | ---- | -------- |
+| name        | string | 是   | 友链名称 |
+| url         | string | 是   | 友链 URL |
+| description | string | 否   | 友链描述 |
+
+---
 
 #### 8.3 更新友链
 
@@ -679,11 +875,17 @@ Authorization: Bearer <token>
 
 **描述**: 更新友链信息（需认证）
 
+**请求头**: `Authorization: Bearer <token>`
+
+---
+
 #### 8.4 删除友链
 
 **接口**: `DELETE /api/friend-links/:id`
 
 **描述**: 删除友链（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 ---
 
@@ -693,104 +895,463 @@ Authorization: Bearer <token>
 
 **接口**: `POST /api/guest-messages`
 
-**描述**: 创建访客留言
+**描述**: 创建访客留言（无需认证）
 
 **请求体**:
+
 ```json
 {
   "content": "留言内容",
-  "visitorId": "visitor_id",
-  "nickname": "访客昵称"
+  "nickname": "访客昵称",
+  "email": "visitor@example.com",
+  "userId": 1,
+  "visitorId": 1
 }
 ```
 
-#### 9.2 获取所有留言
+| 字段      | 类型   | 必填 | 说明                      |
+| --------- | ------ | ---- | ------------------------- |
+| content   | string | 是   | 留言内容                  |
+| nickname  | string | 否   | 留言者昵称                |
+| email     | string | 否   | 留言者邮箱                |
+| userId    | number | 否   | 用户 ID（登录用户留言时） |
+| visitorId | number | 否   | 访客 ID（游客留言时）     |
+
+---
+
+#### 9.2 获取留言列表
 
 **接口**: `GET /api/guest-messages`
 
-**描述**: 获取所有留言列表
+**描述**: 获取留言列表（无需认证）
 
-#### 9.3 删除留言
+**查询参数**:
+
+- `current`: 页码
+- `pageSize`: 每页数量
+- `approvedOnly`: 是否仅返回已审核留言（可选，默认 false）
+
+---
+
+#### 9.3 分页查询留言（管理）
+
+**接口**: `GET /api/guest-messages/page`
+
+**描述**: 分页查询所有留言（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**查询参数**:
+
+- `current`: 页码
+- `pageSize`: 每页数量
+- `status`: 状态筛选（可选）
+- `searchValue`: 搜索关键词（可选）
+
+---
+
+#### 9.4 更新留言状态
+
+**接口**: `PUT /api/guest-messages/:id/status`
+
+**描述**: 更新留言审核状态（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "status": "approved"
+}
+```
+
+`status` 取值: `pending` / `approved` / `rejected`
+
+---
+
+#### 9.5 删除留言
 
 **接口**: `DELETE /api/guest-messages/:id`
 
 **描述**: 删除留言（需认证）
 
+**请求头**: `Authorization: Bearer <token>`
+
 ---
 
-### 10. 更新日志模块 (`/api/changelogs`)
+### 10. 公告模块 (`/api/announcements`)
 
-#### 10.1 获取所有更新日志
+#### 10.1 获取所有公告
+
+**接口**: `GET /api/announcements`
+
+**描述**: 获取所有已发布公告列表（无需认证）
+
+---
+
+#### 10.2 分页查询公告（管理）
+
+**接口**: `GET /api/announcements/page`
+
+**描述**: 分页查询公告列表，包含所有状态（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**查询参数**:
+
+- `current`: 页码
+- `pageSize`: 每页数量
+- `status`: 状态筛选（可选）
+
+---
+
+#### 10.3 获取公告详情
+
+**接口**: `GET /api/announcements/:id`
+
+**描述**: 根据 ID 获取已发布公告详情（无需认证）
+
+---
+
+#### 10.4 创建/更新公告
+
+**接口**: `POST /api/announcements`
+
+**描述**: 创建或更新公告（需认证）。如果请求体中 `id > 0`，则更新已有公告。
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "id": 1,
+  "title": "公告标题",
+  "content": "公告内容",
+  "status": "published",
+  "isTop": false
+}
+```
+
+| 字段    | 类型    | 必填 | 说明                         |
+| ------- | ------- | ---- | ---------------------------- |
+| id      | number  | 否   | 公告 ID，存在则更新          |
+| title   | string  | 是   | 标题（最大 200 字符）        |
+| content | string  | 是   | 内容                         |
+| status  | string  | 否   | draft / published / archived |
+| isTop   | boolean | 否   | 是否置顶                     |
+
+---
+
+#### 10.5 删除公告
+
+**接口**: `DELETE /api/announcements/:id`
+
+**描述**: 删除公告（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+---
+
+### 11. 更新日志模块 (`/api/changelogs`)
+
+#### 11.1 获取所有更新日志
 
 **接口**: `GET /api/changelogs`
 
-**描述**: 获取所有更新日志列表
+**描述**: 获取所有已发布更新日志列表（无需认证）
 
-#### 10.2 创建更新日志
+---
+
+#### 11.2 分页查询更新日志（管理）
+
+**接口**: `GET /api/changelogs/page`
+
+**描述**: 分页查询更新日志列表，包含所有发布状态（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**查询参数**:
+
+- `current`: 页码
+- `pageSize`: 每页数量
+- `type`: 类型筛选（可选）
+- `isPublished`: 发布状态筛选（可选）
+- `searchValue`: 搜索关键词（可选）
+
+---
+
+#### 11.3 获取更新日志详情
+
+**接口**: `GET /api/changelogs/:id`
+
+**描述**: 根据 ID 获取已发布更新日志详情（无需认证）
+
+---
+
+#### 11.4 创建/更新日志
 
 **接口**: `POST /api/changelogs`
 
-**描述**: 创建更新日志（需认证）
+**描述**: 创建或更新更新日志（需认证）。如果请求体中 `id > 0`，则更新已有记录。
+
+**请求头**: `Authorization: Bearer <token>`
 
 **请求体**:
+
 ```json
 {
+  "id": 1,
   "version": "1.0.0",
+  "title": "更新标题",
   "content": "更新内容",
-  "releaseDate": "2024-01-01"
+  "type": "feature",
+  "releaseDate": "2024-01-01",
+  "isPublished": true
+}
+```
+
+| 字段        | 类型    | 必填 | 说明                                      |
+| ----------- | ------- | ---- | ----------------------------------------- |
+| id          | number  | 否   | 日志 ID，存在则更新                       |
+| version     | string  | 是   | 版本号（最大 50 字符）                    |
+| title       | string  | 是   | 更新标题（最大 200 字符）                 |
+| content     | string  | 是   | 更新内容                                  |
+| type        | string  | 否   | feature / improvement / bugfix / security |
+| releaseDate | string  | 是   | 发布日期（YYYY-MM-DD）                    |
+| isPublished | boolean | 否   | 是否发布                                  |
+
+---
+
+#### 11.5 更新发布状态
+
+**接口**: `POST /api/changelogs/:id/status`
+
+**描述**: 更新日志发布状态（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "isPublished": true
 }
 ```
 
 ---
 
-### 11. 设置模块 (`/api/settings`)
+#### 11.6 删除更新日志
 
-#### 11.1 获取设置
+**接口**: `DELETE /api/changelogs/:id`
 
-**接口**: `GET /api/settings`
+**描述**: 删除更新日志（需认证）
 
-**描述**: 获取系统设置
-
-#### 11.2 更新设置
-
-**接口**: `PUT /api/settings`
-
-**描述**: 更新系统设置（需认证）
+**请求头**: `Authorization: Bearer <token>`
 
 ---
 
-### 12. SEO 设置模块 (`/api/seo-settings`)
+### 12. 设置模块 (`/api/setting`)
 
-#### 12.1 获取 SEO 设置
+#### 12.1 获取所有设置
 
-**接口**: `GET /api/seo-settings`
+**接口**: `GET /api/setting`
 
-**描述**: 获取 SEO 设置
+**描述**: 获取聚合设置（包含 SEO、友链、ICP 信息）（需认证）
 
-#### 12.2 更新 SEO 设置
+**请求头**: `Authorization: Bearer <token>`
 
-**接口**: `PUT /api/seo-settings`
+---
 
-**描述**: 更新 SEO 设置（需认证）
+#### 12.2 更新设置
+
+**接口**: `PUT /api/setting`
+
+**描述**: 批量更新设置（包含 SEO、友链、ICP 信息）（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "seo": {
+    "title": "网站标题",
+    "description": "网站描述",
+    "keywords": "关键词",
+    "sitemap_url": "sitemap URL",
+    "robots": "robots 配置",
+    "canonical_url": "canonical URL",
+    "og_title": "OG 标题",
+    "og_description": "OG 描述",
+    "og_image": "OG 图片 URL",
+    "schema_markup": "schema 标记",
+    "meta_author": "Meta 作者",
+    "meta_viewport": "Meta 视口"
+  },
+  "links": [
+    {
+      "name": "友链名称",
+      "url": "https://example.com",
+      "description": "友链描述"
+    }
+  ],
+  "icp": {
+    "icp_number": "ICP 备案号",
+    "icp_url": "ICP 查询 URL",
+    "website_name": "网站名称"
+  }
+}
+```
+
+> **注意**: `links` 为可选字段。如果提供 `links`，将**替换**所有友链（事务性操作）。如果不提供，则保持现有友链不变。
+
+---
+
+### 13. SEO 设置模块 (`/api/seo-settings`)
+
+#### 13.1 获取最新 SEO 设置
+
+**接口**: `GET /api/seo-settings/latest`
+
+**描述**: 获取最新一条 SEO 设置（无需认证）
+
+---
+
+#### 13.2 创建 SEO 设置
+
+**接口**: `POST /api/seo-settings`
+
+**描述**: 创建新的 SEO 设置记录（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**: 同 Setting 模块中的 `seo` 字段
+
+---
+
+### 14. ICP 备案信息模块 (`/api/icp-info`)
+
+#### 14.1 获取最新 ICP 信息
+
+**接口**: `GET /api/icp-info/latest`
+
+**描述**: 获取最新一条 ICP 备案信息（无需认证）
+
+---
+
+#### 14.2 创建 ICP 信息
+
+**接口**: `POST /api/icp-info`
+
+**描述**: 创建新的 ICP 备案信息记录（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "icp_number": "ICP 备案号",
+  "icp_url": "ICP 查询 URL",
+  "website_name": "网站名称"
+}
+```
+
+---
+
+### 15. 数据导入导出模块 (`/api/data-transfer`)
+
+> **权限要求**: 该模块所有接口需要**超级管理员**权限（role=1）
+
+#### 15.1 导出数据
+
+**接口**: `GET /api/data-transfer/export`
+
+**描述**: 导出所有业务数据为 ZIP 压缩包（需超级管理员认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**响应类型**: ZIP 文件下载
+
+---
+
+#### 15.2 导入数据
+
+**接口**: `POST /api/data-transfer/import`
+
+**描述**: 从 ZIP 压缩包导入数据（需超级管理员认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求类型**: `multipart/form-data`
+
+**表单字段**:
+
+- `file`: ZIP 文件（最大 1GB）
+
+**查询参数**:
+
+- `mode`: 导入模式，仅支持 `truncate`（清空后导入）
+
+---
+
+## 枚举值说明
+
+### Post.status / Announcement.status
+
+- `draft`: 草稿
+- `published`: 已发布
+- `archived`: 已归档
+
+### Category.status / Tag.status
+
+- `0`: 禁用
+- `1`: 启用
+
+### Comment.status / GuestMessage.status
+
+- `pending`: 待审核
+- `approved`: 已通过
+- `rejected`: 已拒绝
+
+### Changelog.type
+
+- `feature`: 新功能
+- `improvement`: 改进
+- `bugfix`: 缺陷修复
+- `security`: 安全更新
+
+### User.role
+
+- `0`: 管理员
+- `1`: 超级管理员
+
+### User.gender
+
+- `0`: 女
+- `1`: 男
 
 ---
 
 ## 错误码说明
 
-| 错误码 | 说明 |
-|--------|------|
-| 200 | 请求成功 |
-| 400 | 请求参数错误 |
-| 401 | 未授权，需要登录 |
-| 403 | 禁止访问 |
-| 404 | 资源不存在 |
-| 422 | 数据验证失败 |
-| 500 | 服务器内部错误 |
+| 错误码 | 说明             |
+| ------ | ---------------- |
+| 200    | 请求成功         |
+| 400    | 请求参数错误     |
+| 401    | 未授权，需要登录 |
+| 403    | 禁止访问         |
+| 404    | 资源不存在       |
+| 500    | 服务器内部错误   |
 
 ## 注意事项
 
 1. 所有时间字段使用 ISO 8601 格式
-2. 分页查询默认页码为 1，每页数量为 10
+2. 分页查询参数: `current`（页码）默认 1，`pageSize`（每页数量）默认 10
 3. 需要认证的接口必须携带有效的 JWT token
 4. 文件上传大小限制由 OSS 配置决定
-5. 评论和留言可能需要审核后才能显示
+5. 评论和留言需要审核后才能在前端公开显示
+6. 超级管理员接口（data-transfer 等）需要 `role=1`
+7. 公共文章/公告/更新日志接口仅返回已发布状态的数据
