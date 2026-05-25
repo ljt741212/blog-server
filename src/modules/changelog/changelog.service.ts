@@ -62,6 +62,14 @@ export class ChangelogService {
     return item;
   }
 
+  async findPublicOne(id: number) {
+    const item = await this.changelogRepository.findOne({
+      where: { id, isPublished: true },
+    });
+    if (!item) throw new NotFoundException('更新日志不存在');
+    return item;
+  }
+
   async create(dto: SaveChangelogDto) {
     const { version, title, content, type, isPublished, releaseDate } = dto;
 

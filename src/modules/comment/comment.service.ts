@@ -113,7 +113,12 @@ export class CommentService {
       .createQueryBuilder('comment')
       .leftJoinAndSelect('comment.user', 'user')
       .leftJoinAndSelect('comment.visitor', 'visitor')
-      .leftJoinAndSelect('comment.replies', 'replies')
+      .leftJoinAndSelect(
+        'comment.replies',
+        'replies',
+        approvedOnly ? 'replies.status = :replyStatus' : undefined,
+        approvedOnly ? { replyStatus: CommentStatus.APPROVED } : undefined,
+      )
       .leftJoinAndSelect('replies.user', 'replyUser')
       .leftJoinAndSelect('replies.visitor', 'replyVisitor')
       .where('comment.postId = :postId', { postId })

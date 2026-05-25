@@ -35,7 +35,7 @@ export class AnnouncementController {
 
   @Get(':id')
   findOne(@Param() params: IdParamDto) {
-    return this.announcementService.findOne(params.id);
+    return this.announcementService.findPublicOne(params.id);
   }
 
   @Post()

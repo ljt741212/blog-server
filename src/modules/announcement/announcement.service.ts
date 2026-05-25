@@ -44,6 +44,14 @@ export class AnnouncementService {
     return item;
   }
 
+  async findPublicOne(id: number) {
+    const item = await this.repo.findOne({
+      where: { id, status: AnnouncementStatus.PUBLISHED },
+    });
+    if (!item) throw new NotFoundException('公告不存在');
+    return item;
+  }
+
   async create(dto: SaveAnnouncementDto) {
     const entity = this.repo.create(dto);
     return this.repo.save(entity);

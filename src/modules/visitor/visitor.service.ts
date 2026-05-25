@@ -31,15 +31,7 @@ export class VisitorService {
   ) {}
 
   async recordVisit(dto: TrackVisitDto, req: Request) {
-    const forwarded = req.headers['x-forwarded-for'];
-    const rawIp =
-      (typeof forwarded === 'string' ? forwarded : '') ||
-      (req.ip ?? '') ||
-      (req.socket?.remoteAddress ?? '') ||
-      '';
-
-    const ip = rawIp.split(',')[0].trim();
-
+    const ip = this.extractClientIp(req);
     const userAgent =
       dto.userAgent || (req.headers['user-agent'] as string) || '';
 
@@ -114,13 +106,7 @@ export class VisitorService {
    * 心跳：仅更新 lastActiveAt，不写入 visitor_logs（供前端定时调用）
    */
   async recordHeartbeat(dto: TrackVisitDto, req: Request) {
-    const forwarded = req.headers['x-forwarded-for'];
-    const rawIp =
-      (typeof forwarded === 'string' ? forwarded : '') ||
-      (req.ip ?? '') ||
-      (req.socket?.remoteAddress ?? '') ||
-      '';
-    const ip = rawIp.split(',')[0].trim();
+    const ip = this.extractClientIp(req);
     const userAgent =
       dto.userAgent || (req.headers['user-agent'] as string) || '';
 
@@ -332,6 +318,16 @@ export class VisitorService {
       categoryViews,
       recentVisitors,
     };
+  }
+
+  private extractClientIp(req: Request): string {
+    const forwarded = req.headers['x-forwarded-for'];
+    const rawIp =
+      (typeof forwarded === 'string' ? forwarded : '') ||
+      (req.ip ?? '') ||
+      (req.socket?.remoteAddress ?? '') ||
+      '';
+    return rawIp.split(',')[0].trim();
   }
 
   private normalizeSource(referer?: string | null): string {

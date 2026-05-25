@@ -36,7 +36,7 @@ export class ChangelogController {
 
   @Get(':id')
   findOne(@Param() params: IdParamDto) {
-    return this.changelogService.findOne(params.id);
+    return this.changelogService.findPublicOne(params.id);
   }
 
   @Post()

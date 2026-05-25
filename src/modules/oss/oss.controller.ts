@@ -40,6 +40,7 @@ export class OssController {
   }
 
   @Get('download')
+  @UseGuards(JwtAuthGuard)
   async download(@Query('key') key: string, @Res() res: Response) {
     const result = await this.ossService.getStream(key);
 

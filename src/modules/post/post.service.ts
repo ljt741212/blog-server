@@ -54,6 +54,7 @@ export class PostService {
 
   async findAll() {
     const posts = await this.postRepository.find({
+      where: { status: PostStatus.PUBLISHED },
       relations: ['category', 'tags', 'user'],
       order: { createdAt: 'DESC' },
     });
@@ -71,6 +72,15 @@ export class PostService {
 
   async findDetail(id: number) {
     const post = await this.findOne(id);
+    return this.buildPublicPost(post);
+  }
+
+  async findPublicDetail(id: number) {
+    const post = await this.postRepository.findOne({
+      where: { id, status: PostStatus.PUBLISHED },
+      relations: ['category', 'tags', 'user'],
+    });
+    if (!post) throw new NotFoundException('文章不存在');
     return this.buildPublicPost(post);
   }
 

@@ -29,7 +29,9 @@ export class SettingService {
       dto.seo
         ? this.seoSettingService.save(dto.seo)
         : this.seoSettingService.getSeoSetting(),
-      this.friendLinkService.replaceAll(dto.links ?? []),
+      dto.links !== undefined
+        ? this.friendLinkService.replaceAll(dto.links)
+        : this.friendLinkService.findAll(),
       dto.icp
         ? this.icpInfoService.save(dto.icp)
         : this.icpInfoService.getLatest(),
