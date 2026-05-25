@@ -9,6 +9,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import archiver from 'archiver';
 import { DataSource } from 'typeorm';
@@ -60,6 +61,8 @@ function buildInsertSql(table: string, columns: string[], rowCount: number) {
 
 @Injectable()
 export class DataTransferService {
+  private readonly logger = new Logger(DataTransferService.name);
+
   constructor(private readonly dataSource: DataSource) {}
 
   async exportAllToZip(res: Response) {
@@ -140,7 +143,8 @@ export class DataTransferService {
       }
 
       await zip.finalize();
-    } catch {
+    } catch (err: unknown) {
+      this.logger.error('数据库导出失败', err);
       throw new InternalServerErrorException('导出失败');
     } finally {
       await runner.release();
@@ -156,6 +160,8 @@ export class DataTransferService {
       path.join(os.tmpdir(), 'blog-data-import-'),
     );
     try {
+      // Validate zip before extraction
+      await this.validateZipFile(zipPath);
       await fs
         .createReadStream(zipPath)
         .pipe(unzipper.Extract({ path: workDir }))
@@ -178,22 +184,35 @@ export class DataTransferService {
         throw new BadRequestException('导入包缺少 tables 数据');
       }
 
+      const tables = meta.tables.map((t) => t.name);
+
+      // Pre-flight: verify all JSONL files exist before touching any data
+      const missingFiles = tables.filter(
+        (table) => !tableFiles.includes(`${table}.jsonl`),
+      );
+      if (missingFiles.length > 0) {
+        throw new BadRequestException(
+          `导入包缺少以下表的数据文件: ${missingFiles.join(', ')}`,
+        );
+      }
+
       const runner = this.dataSource.createQueryRunner();
       await runner.connect();
+      await runner.startTransaction();
 
       let totalRows = 0;
       try {
+        // DELETE is DML — works inside a transaction with FOREIGN_KEY_CHECKS=0.
+        // TRUNCATE is DDL and cannot be used here: MySQL forbids TRUNCATE on
+        // tables referenced by foreign keys even with FOREIGN_KEY_CHECKS=0.
         await runner.query('SET FOREIGN_KEY_CHECKS=0');
 
-        const tables = meta.tables.map((t) => t.name);
         for (const table of tables) {
-          await runner.query(`TRUNCATE TABLE ${quoteId(table)}`);
+          await runner.query(`DELETE FROM ${quoteId(table)}`);
         }
 
         for (const table of tables) {
-          const fileName = `${table}.jsonl`;
-          if (!tableFiles.includes(fileName)) continue;
-          const filePath = path.join(tablesDir, fileName);
+          const filePath = path.join(tablesDir, `${table}.jsonl`);
 
           const rl = readline.createInterface({
             input: fs.createReadStream(filePath),
@@ -237,6 +256,16 @@ export class DataTransferService {
         }
 
         await runner.query('SET FOREIGN_KEY_CHECKS=1');
+        await runner.commitTransaction();
+
+        // Reset AUTO_INCREMENT counters after commit.
+        // DELETE doesn't reset them like TRUNCATE does — if imported data
+        // has higher IDs than the original, new inserts would try to reuse
+        // stale counter values and hit duplicate-key errors.
+        await this.resetAutoIncrements(runner, tables);
+      } catch (e) {
+        await runner.rollbackTransaction();
+        throw e;
       } finally {
         await runner.release();
       }
@@ -250,8 +279,66 @@ export class DataTransferService {
         ? e
         : new InternalServerErrorException('导入失败');
     } finally {
-      await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
-      await fsp.unlink(zipPath).catch(() => {});
+      await fsp
+        .rm(workDir, { recursive: true, force: true })
+        .catch((err: unknown) =>
+          this.logger.warn(`清理临时目录失败: ${workDir}`, err),
+        );
+      await fsp
+        .unlink(zipPath)
+        .catch((err: unknown) =>
+          this.logger.warn(`清理上传文件失败: ${zipPath}`, err),
+        );
+    }
+  }
+
+  private async validateZipFile(zipPath: string) {
+    const fd = await fsp.open(zipPath, 'r');
+    try {
+      const buf = Buffer.alloc(4);
+      const { bytesRead } = await fd.read(buf, 0, 4, 0);
+      if (bytesRead < 4) {
+        throw new BadRequestException('上传文件为空或损坏');
+      }
+      const magic = buf.readUInt32BE(0);
+      // PK\x03\x04 (local file header), PK\x05\x06 (EOCD / empty archive), PK\x07\x08 (spanned)
+      if (
+        magic !== 0x504b0304 &&
+        magic !== 0x504b0506 &&
+        magic !== 0x504b0708
+      ) {
+        throw new BadRequestException('上传文件不是有效的 ZIP 文件');
+      }
+    } finally {
+      await fd.close();
+    }
+  }
+
+  private async resetAutoIncrements(
+    runner: ReturnType<DataSource['createQueryRunner']>,
+    tables: string[],
+  ) {
+    if (tables.length === 0) return;
+    const placeholders = tables.map(() => '?').join(', ');
+    const autoIncTables = (await runner.query(
+      `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = ? AND AUTO_INCREMENT IS NOT NULL AND TABLE_NAME IN (${placeholders})`,
+      [(this.dataSource.options as { database?: string }).database, ...tables],
+    )) as Array<{ TABLE_NAME: string }>;
+
+    for (const { TABLE_NAME } of autoIncTables) {
+      try {
+        const [{ maxId }] = (await runner.query(
+          `SELECT MAX(id) AS maxId FROM ${quoteId(TABLE_NAME)}`,
+        )) as Array<{ maxId: number | null }>;
+        if (maxId != null) {
+          await runner.query(
+            `ALTER TABLE ${quoteId(TABLE_NAME)} AUTO_INCREMENT = ?`,
+            [Number(maxId) + 1],
+          );
+        }
+      } catch (err: unknown) {
+        this.logger.warn(`重置 AUTO_INCREMENT 失败: ${TABLE_NAME}`, err);
+      }
     }
   }
 }
