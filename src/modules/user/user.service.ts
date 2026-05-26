@@ -117,7 +117,7 @@ export class UserService {
       throw new BadRequestException('用户名或邮箱已存在');
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const entity = this.userRepository.create({
       username,
@@ -165,7 +165,7 @@ export class UserService {
     }
 
     if (typeof password === 'string' && password.length > 0) {
-      user.password = await bcrypt.hash(password, 10);
+      user.password = await bcrypt.hash(password, 12);
     }
     if (typeof nickname !== 'undefined') user.nickname = nickname;
     if (typeof phone !== 'undefined') user.phone = phone;
@@ -223,7 +223,7 @@ export class UserService {
       throw new UnauthorizedException('原密码错误');
     }
 
-    user.password = await bcrypt.hash(dto.newPassword, 10);
+    user.password = await bcrypt.hash(dto.newPassword, 12);
     await this.userRepository.save(user);
     return { message: '密码修改成功' };
   }

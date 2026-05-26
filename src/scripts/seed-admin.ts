@@ -22,7 +22,7 @@ async function seed() {
   const username = process.env.SEED_ADMIN_USERNAME ?? DEFAULT_USERNAME;
   const email = process.env.SEED_ADMIN_EMAIL ?? DEFAULT_EMAIL;
   const rawPassword = process.env.SEED_ADMIN_PASSWORD ?? DEFAULT_PASSWORD;
-  const password = await bcrypt.hash(rawPassword, 10);
+  const password = await bcrypt.hash(rawPassword, 12);
 
   await userRepo.save(
     userRepo.create({
