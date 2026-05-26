@@ -10,6 +10,7 @@ import { GuestMessage } from '@/modules/guest-message/guest-message.entity';
 import { IcpInfo } from '@/modules/icp-info/icp-info.entity';
 import { Post } from '@/modules/post/post.entity';
 import { SeoSetting } from '@/modules/seo-setting/seo-setting.entity';
+import { SiteConfig } from '@/modules/site-config/site-config.entity';
 import { Tag } from '@/modules/tag/tag.entity';
 import { User } from '@/modules/user/user.entity';
 import { VisitorLog } from '@/modules/visitor/visitor-log.entity';
@@ -27,6 +28,7 @@ import { Visitor } from '@/modules/visitor/visitor.entity';
       IcpInfo,
       Post,
       SeoSetting,
+      SiteConfig,
       Tag,
       User,
       Visitor,

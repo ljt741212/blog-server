@@ -20,6 +20,7 @@ import { OssModule } from './modules/oss/oss.module';
 import { PostModule } from './modules/post/post.module';
 import { SeoSettingModule } from './modules/seo-setting/seo-setting.module';
 import { SettingModule } from './modules/setting/setting.module';
+import { SiteConfigModule } from './modules/site-config/site-config.module';
 import { TagModule } from './modules/tag/tag.module';
 import { UserModule } from './modules/user/user.module';
 import { VisitorModule } from './modules/visitor/visitor.module';
@@ -54,6 +55,7 @@ import { EntitiesModule } from './shared/database/entities.module';
     GuestMessageModule,
     IcpInfoModule,
     SettingModule,
+    SiteConfigModule,
     TagModule,
     CategoryModule,
     UserModule,
