@@ -148,6 +148,23 @@ export class IdParamDto {
   id: number;
 }
 
+export class SendEmailCodeDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+}
+
+export class EmailLoginDto {
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(6)
+  code: string;
+}
+
 export class ChangePasswordDto {
   @IsNotEmpty({ message: '请输入原密码' })
   @IsString()

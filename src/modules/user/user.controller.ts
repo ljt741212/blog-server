@@ -16,7 +16,9 @@ import { JwtAuthGuard } from '@/common';
 import {
   ChangePasswordDto,
   CreateUserDto,
+  EmailLoginDto,
   IdParamDto,
+  SendEmailCodeDto,
   UpdateUserDto,
   UserPageQueryDto,
   UserLoginDto,
@@ -30,6 +32,16 @@ export class UserController {
   @Post('login')
   login(@Body() dto: UserLoginDto) {
     return this.userService.login(dto);
+  }
+
+  @Post('send-email-code')
+  sendEmailCode(@Body() dto: SendEmailCodeDto) {
+    return this.userService.sendEmailCode(dto);
+  }
+
+  @Post('email-login')
+  emailLogin(@Body() dto: EmailLoginDto) {
+    return this.userService.emailLogin(dto);
   }
 
   @Get('me')

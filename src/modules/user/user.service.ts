@@ -10,11 +10,14 @@ import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
+import { EmailService } from '@/modules/email/email.service';
 import { AuthUtil } from '@/shared/auth/auth.util';
 
 import {
   ChangePasswordDto,
   CreateUserDto,
+  EmailLoginDto,
+  SendEmailCodeDto,
   UpdateUserDto,
   UserLoginDto,
   UserPageQueryDto,
@@ -44,6 +47,7 @@ export class UserService {
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
     private readonly authUtil: AuthUtil,
+    private readonly emailService: EmailService,
   ) {}
 
   async paginateForAdmin(query: UserPageQueryDto) {
@@ -196,6 +200,49 @@ export class UserService {
 
     const isValid = await bcrypt.compare(dto.password, user.password);
     if (!isValid) throw new UnauthorizedException('用户名或密码错误');
+
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      role: user.role,
+    };
+
+    const token = this.jwtService.sign(payload);
+
+    return {
+      token,
+      user: toUserResponse(user),
+    };
+  }
+
+  async sendEmailCode(dto: SendEmailCodeDto) {
+    await this.emailService.sendCode(dto.email);
+    return { message: '验证码已发送' };
+  }
+
+  async emailLogin(dto: EmailLoginDto) {
+    const valid = await this.emailService.verifyCode(dto.email, dto.code);
+    if (!valid) {
+      throw new UnauthorizedException('验证码错误或已过期');
+    }
+
+    let user = await this.userRepository.findOne({
+      where: { email: dto.email },
+    });
+
+    if (!user) {
+      const hashedPassword = await bcrypt.hash(
+        Math.random().toString(36).slice(2),
+        12,
+      );
+      const entity = this.userRepository.create({
+        username: dto.email,
+        nickname: dto.email.split('@')[0],
+        email: dto.email,
+        password: hashedPassword,
+      });
+      user = await this.userRepository.save(entity);
+    }
 
     const payload = {
       sub: user.id,
