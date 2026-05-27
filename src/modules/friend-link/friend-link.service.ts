@@ -48,19 +48,17 @@ export class FriendLinkService {
   }
 
   async replaceAll(list: SaveFriendLinkDto[]) {
-    await this.friendLinkRepository.clear();
+    return this.friendLinkRepository.manager.transaction(async (txn) => {
+      await txn.clear(FriendLink);
 
-    if (!list?.length) return [];
+      if (!list?.length) return [];
 
-    const entities = list.map(({ name, url, description }) =>
-      this.friendLinkRepository.create({
-        name,
-        url,
-        description,
-      }),
-    );
+      const entities = list.map(({ name, url, description }) =>
+        txn.create(FriendLink, { name, url, description }),
+      );
 
-    return this.friendLinkRepository.save(entities);
+      return txn.save(entities);
+    });
   }
 
   async remove(id: number) {

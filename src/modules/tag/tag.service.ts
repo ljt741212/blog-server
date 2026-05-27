@@ -10,7 +10,7 @@ import { paginateQueryBuilderForAdmin } from '@/common';
 
 import {
   CreateTagDto,
-  TagListQueryDto,
+  SaveTagDto,
   TagPageQueryDto,
   UpdateTagDto,
 } from './tag.dto';
@@ -23,12 +23,12 @@ export class TagService {
     private readonly tagRepository: Repository<Tag>,
   ) {}
 
-  async paginate(query: TagListQueryDto) {
+  async paginateForAdmin(query: TagPageQueryDto) {
     const qb = this.tagRepository.createQueryBuilder('tag');
 
-    if (query.keyword) {
+    if (query.searchValue) {
       qb.andWhere('(tag.name LIKE :kw OR tag.description LIKE :kw)', {
-        kw: `%${query.keyword}%`,
+        kw: `%${query.searchValue}%`,
       });
     }
     if (typeof query.status !== 'undefined') {
@@ -37,16 +37,6 @@ export class TagService {
 
     qb.orderBy('tag.created_at', 'DESC');
     return paginateQueryBuilderForAdmin(qb, query);
-  }
-
-  async paginateForAdmin(query: TagPageQueryDto) {
-    const normalized: TagListQueryDto = {
-      page: query.current ?? 1,
-      limit: query.pageSize ?? 10,
-      keyword: query.searchValue,
-      status: query.status,
-    };
-    return this.paginate(normalized);
   }
 
   async findAll() {
@@ -96,9 +86,22 @@ export class TagService {
     }
   }
 
+  async save(dto: SaveTagDto) {
+    if (dto.id) return this.update(dto.id, dto);
+    return this.create(dto);
+  }
+
   async remove(id: number) {
     const tag = await this.findOne(id);
-    await this.tagRepository.remove(tag);
+    try {
+      await this.tagRepository.remove(tag);
+    } catch (e: unknown) {
+      const err = e as { errno?: number };
+      if (err?.errno === 1451) {
+        throw new BadRequestException('该标签下有文章，无法删除');
+      }
+      throw e;
+    }
     return true;
   }
 }

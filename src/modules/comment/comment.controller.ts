@@ -40,6 +40,7 @@ export class CommentController {
   }
 
   @Get('page')
+  @UseGuards(JwtAuthGuard)
   paginate(@Query() query: CommentAdminPageQueryDto) {
     return this.commentService.paginateForAdmin(query);
   }

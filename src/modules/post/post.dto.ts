@@ -11,20 +11,7 @@ import {
   IsBoolean,
 } from 'class-validator';
 
-import { PaginationQueryDto } from '@/common';
-
 import { PostStatus } from './post.entity';
-
-export class PostListQueryDto extends PaginationQueryDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  keyword?: string;
-
-  @IsOptional()
-  @IsEnum(PostStatus)
-  status?: PostStatus;
-}
 
 export class PostPageQueryDto {
   @IsOptional()

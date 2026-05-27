@@ -17,7 +17,9 @@ import { env } from '@/global/env';
         if (typeof loggerOptions === 'string') {
           try {
             loggerOptions = JSON.parse(loggerOptions) as LoggerOptions;
-          } catch {}
+          } catch {
+            // ignore parse error — fall back to string value
+          }
         }
 
         const dbConfig = configService.get<IDatabaseConfig>('database');

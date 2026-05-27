@@ -24,6 +24,7 @@ export class ChangelogController {
   constructor(private readonly changelogService: ChangelogService) {}
 
   @Get('page')
+  @UseGuards(JwtAuthGuard)
   paginate(@Query() query: ChangelogPageQueryDto) {
     return this.changelogService.paginateForAdmin(query);
   }
@@ -35,7 +36,7 @@ export class ChangelogController {
 
   @Get(':id')
   findOne(@Param() params: IdParamDto) {
-    return this.changelogService.findOne(params.id);
+    return this.changelogService.findPublicOne(params.id);
   }
 
   @Post()

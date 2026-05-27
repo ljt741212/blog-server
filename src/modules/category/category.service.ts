@@ -6,12 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { paginateQueryBuilderForAdmin, PaginationQueryDto } from '@/common';
+import { paginateQueryBuilderForAdmin } from '@/common';
 
 import {
-  CategoryListQueryDto,
   CategoryPageQueryDto,
   CreateCategoryDto,
+  SaveCategoryDto,
   UpdateCategoryDto,
 } from './category.dto';
 import { Category, CategoryStatus } from './category.entity';
@@ -23,12 +23,12 @@ export class CategoryService {
     private readonly categoryRepository: Repository<Category>,
   ) {}
 
-  async paginate(query: CategoryListQueryDto) {
+  async paginateForAdmin(query: CategoryPageQueryDto) {
     const qb = this.categoryRepository.createQueryBuilder('category');
 
-    if (query.keyword) {
+    if (query.searchValue) {
       qb.andWhere('(category.name LIKE :kw OR category.description LIKE :kw)', {
-        kw: `%${query.keyword}%`,
+        kw: `%${query.searchValue}%`,
       });
     }
     if (typeof query.status !== 'undefined') {
@@ -36,17 +36,7 @@ export class CategoryService {
     }
 
     qb.orderBy('category.created_at', 'DESC');
-    return paginateQueryBuilderForAdmin(qb, query as PaginationQueryDto);
-  }
-
-  async paginateForAdmin(query: CategoryPageQueryDto) {
-    const normalized: CategoryListQueryDto = {
-      page: query.current ?? 1,
-      limit: query.pageSize ?? 10,
-      keyword: query.searchValue,
-      status: query.status,
-    };
-    return this.paginate(normalized);
+    return paginateQueryBuilderForAdmin(qb, query);
   }
 
   async findAll() {
@@ -101,9 +91,22 @@ export class CategoryService {
     return this.categoryRepository.save(category);
   }
 
+  async save(dto: SaveCategoryDto) {
+    if (dto.id) return this.update(dto.id, dto);
+    return this.create(dto);
+  }
+
   async remove(id: number) {
     const category = await this.findOne(id);
-    await this.categoryRepository.remove(category);
+    try {
+      await this.categoryRepository.remove(category);
+    } catch (e: unknown) {
+      const err = e as { errno?: number };
+      if (err?.errno === 1451) {
+        throw new BadRequestException('该分类下有文章，无法删除');
+      }
+      throw e;
+    }
     return true;
   }
 }

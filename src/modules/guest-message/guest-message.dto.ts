@@ -14,17 +14,6 @@ import { PaginationQueryDto } from '@/common';
 
 import { GuestMessageStatus } from './guest-message.entity';
 
-export class GuestMessagePageQueryDto extends PaginationQueryDto {
-  @IsOptional()
-  @IsEnum(GuestMessageStatus)
-  status?: GuestMessageStatus;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  keyword?: string;
-}
-
 export class GuestMessageAdminPageQueryDto {
   @IsOptional()
   @Type(() => Number)
@@ -74,6 +63,11 @@ export class CreateGuestMessageDto {
   @IsInt()
   @Min(1)
   visitorId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  visitorUuid?: string;
 }
 
 export class UpdateGuestMessageStatusDto {

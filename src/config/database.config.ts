@@ -13,9 +13,9 @@ const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
   host: env('DB_HOST', '127.0.0.1'),
   port: envNumber('DB_PORT', 3306),
-  username: 'root', // env('root'),
-  password: '123456', // env('DB_PASSWORD'),
-  database: 'blog_db', // env('DB_DATABASE'),
+  username: env('DB_USERNAME', 'root'),
+  password: env('DB_PASSWORD'),
+  database: env('DB_DATABASE', 'blog_db'),
   synchronize: envBoolean('DB_SYNCHRONIZE', false),
   multipleStatements:
     currentScript === 'typeorm' ||

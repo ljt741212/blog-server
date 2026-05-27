@@ -10,6 +10,7 @@ export class SettingController {
   constructor(private readonly settingService: SettingService) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   getAll() {
     return this.settingService.getAll();
   }

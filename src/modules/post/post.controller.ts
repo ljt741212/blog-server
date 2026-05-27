@@ -27,18 +27,19 @@ export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @Get('page')
+  @UseGuards(JwtAuthGuard)
   paginate(@Query() query: PostPageQueryDto) {
     return this.postService.paginateForAdmin(query);
   }
 
   @Get()
-  findAll() {
-    return this.postService.findAll();
+  findAll(@Query() query: PostPageQueryDto) {
+    return this.postService.findAll(query);
   }
 
   @Get(':id')
   findOne(@Param() params: IdParamDto) {
-    return this.postService.findDetail(params.id);
+    return this.postService.findPublicDetail(params.id);
   }
 
   @Post()

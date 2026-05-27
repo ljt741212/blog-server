@@ -1,6 +1,13 @@
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
+export class IdParamDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  id: number;
+}
+
 export class SaveFriendLinkDto {
   @IsOptional()
   @Type(() => Number)

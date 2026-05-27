@@ -22,7 +22,7 @@ async function seed() {
   const username = process.env.SEED_ADMIN_USERNAME ?? DEFAULT_USERNAME;
   const email = process.env.SEED_ADMIN_EMAIL ?? DEFAULT_EMAIL;
   const rawPassword = process.env.SEED_ADMIN_PASSWORD ?? DEFAULT_PASSWORD;
-  const password = await bcrypt.hash(rawPassword, 10);
+  const password = await bcrypt.hash(rawPassword, 12);
 
   await userRepo.save(
     userRepo.create({
@@ -36,7 +36,12 @@ async function seed() {
   console.log('[seed] 已创建初始管理员');
   console.log('  用户名:', username);
   console.log('  邮箱:', email);
-  console.log('  密码:', rawPassword === DEFAULT_PASSWORD ? `${rawPassword}（请尽快在后台修改）` : '***');
+  console.log(
+    '  密码:',
+    rawPassword === DEFAULT_PASSWORD
+      ? `${rawPassword}（请尽快在后台修改）`
+      : '***',
+  );
   await dataSource.destroy();
 }
 

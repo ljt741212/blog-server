@@ -33,10 +33,9 @@ export function envNumber(key: string, defaultValue: number = 0) {
 
 export function envBoolean(key: string, defaultValue: boolean = false) {
   return formatValue(key, defaultValue, (value) => {
-    try {
-      return Boolean(JSON.parse(value));
-    } catch {
-      throw new Error(`${key} environment variable is not a boolean`);
-    }
+    const lowered = value.toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(lowered)) return true;
+    if (['false', '0', 'no', 'off'].includes(lowered)) return false;
+    throw new Error(`${key} environment variable is not a boolean`);
   });
 }

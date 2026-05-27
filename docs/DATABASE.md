@@ -19,489 +19,353 @@
 - **字符集**: utf8mb4
 - **排序规则**: utf8mb4_unicode_ci
 - **存储引擎**: InnoDB
+- **ORM**: TypeORM
 
 ### 设计原则
 
 1. **规范化设计**: 遵循数据库设计第三范式，减少数据冗余
-2. **软删除**: 使用 `deletedAt` 字段实现软删除，保留历史数据
-3. **时间戳**: 统一使用 `createdAt` 和 `updatedAt` 记录时间
-4. **外键约束**: 使用外键保证数据完整性
-5. **索引优化**: 为常用查询字段添加索引
+2. **公共基类**: 所有业务表继承 `CommonEntity`，包含 `id` (自增主键)、`created_at`、`updated_at`
+3. **外键约束**: 使用外键保证数据完整性
+4. **索引优化**: 为常用查询字段添加索引
+5. **时间戳**: 统一使用 `created_at` 和 `updated_at`，蛇形命名
+
+> **注意**: 本项目不使用软删除，删除操作直接从数据库移除记录。
 
 ## 表结构设计
 
-### 1. User (用户表)
-
-**表名**: `user`
+### 1. users（用户表）
 
 **描述**: 存储系统用户信息
 
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 用户 ID |
-| username | VARCHAR(50) | UNIQUE, NOT NULL | 用户名 |
-| password | VARCHAR(255) | NOT NULL | 密码（bcrypt 加密） |
-| email | VARCHAR(100) | NULL | 邮箱 |
-| avatar | VARCHAR(255) | NULL | 头像 URL |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
+| 字段名         | 类型         | 约束                        | 说明                         |
+| -------------- | ------------ | --------------------------- | ---------------------------- |
+| id             | INT          | PRIMARY KEY, AUTO_INCREMENT | 用户 ID                      |
+| username       | VARCHAR(50)  | UNIQUE, NOT NULL            | 用户名                       |
+| nickname       | VARCHAR(50)  | NULL                        | 昵称                         |
+| password       | VARCHAR(100) | NOT NULL                    | 密码（bcrypt 加密）          |
+| email          | VARCHAR(100) | UNIQUE, NOT NULL            | 邮箱                         |
+| phone          | VARCHAR(20)  | NULL                        | 手机号                       |
+| wechat         | VARCHAR(50)  | NULL                        | 微信号                       |
+| role           | TINYINT      | NOT NULL, DEFAULT 0         | 角色：0-管理员，1-超级管理员 |
+| avatar         | VARCHAR(255) | NULL                        | 头像 URL                     |
+| bio            | TEXT         | NULL                        | 简介                         |
+| github_account | VARCHAR(100) | NULL                        | GitHub 账号                  |
+| gender         | TINYINT      | NULL                        | 性别：0-女，1-男             |
+| created_at     | DATETIME(6)  | NOT NULL                    | 创建时间                     |
+| updated_at     | DATETIME(6)  | NOT NULL                    | 更新时间                     |
 
 **索引**:
+
 - PRIMARY KEY (`id`)
 - UNIQUE KEY (`username`)
-- INDEX (`email`)
-- INDEX (`deletedAt`)
-
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `user` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `username` VARCHAR(50) NOT NULL,
-  `password` VARCHAR(255) NOT NULL,
-  `email` VARCHAR(100) NULL,
-  `avatar` VARCHAR(255) NULL,
-  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deletedAt` DATETIME NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_username` (`username`),
-  KEY `idx_email` (`email`),
-  KEY `idx_deleted_at` (`deletedAt`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
+- UNIQUE KEY (`email`)
 
 ---
 
-### 2. Post (文章表)
-
-**表名**: `post`
-
-**描述**: 存储博客文章信息
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 文章 ID |
-| title | VARCHAR(200) | NOT NULL | 文章标题 |
-| content | TEXT | NOT NULL | 文章内容 |
-| summary | VARCHAR(500) | NULL | 文章摘要 |
-| cover | VARCHAR(255) | NULL | 封面图片 URL |
-| views | INT | DEFAULT 0 | 浏览量 |
-| likes | INT | DEFAULT 0 | 点赞数 |
-| isTop | BOOLEAN | DEFAULT FALSE | 是否置顶 |
-| status | ENUM | DEFAULT 'draft' | 状态：draft(草稿), published(已发布) |
-| categoryId | INT | NULL, FOREIGN KEY | 分类 ID |
-| authorId | INT | NOT NULL, FOREIGN KEY | 作者 ID |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
-
-**索引**:
-- PRIMARY KEY (`id`)
-- INDEX (`categoryId`)
-- INDEX (`authorId`)
-- INDEX (`status`)
-- INDEX (`isTop`)
-- INDEX (`createdAt`)
-- INDEX (`deletedAt`)
-
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `post` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `title` VARCHAR(200) NOT NULL,
-  `content` TEXT NOT NULL,
-  `summary` VARCHAR(500) NULL,
-  `cover` VARCHAR(255) NULL,
-  `views` INT NOT NULL DEFAULT 0,
-  `likes` INT NOT NULL DEFAULT 0,
-  `isTop` BOOLEAN NOT NULL DEFAULT FALSE,
-  `status` ENUM('draft', 'published') NOT NULL DEFAULT 'draft',
-  `categoryId` INT NULL,
-  `authorId` INT NOT NULL,
-  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deletedAt` DATETIME NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_category_id` (`categoryId`),
-  KEY `idx_author_id` (`authorId`),
-  KEY `idx_status` (`status`),
-  KEY `idx_is_top` (`isTop`),
-  KEY `idx_created_at` (`createdAt`),
-  KEY `idx_deleted_at` (`deletedAt`),
-  CONSTRAINT `fk_post_category` FOREIGN KEY (`categoryId`) REFERENCES `category` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_post_author` FOREIGN KEY (`authorId`) REFERENCES `user` (`id`) ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
----
-
-### 3. Category (分类表)
-
-**表名**: `category`
-
-**描述**: 存储文章分类信息
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 分类 ID |
-| name | VARCHAR(50) | NOT NULL | 分类名称 |
-| description | VARCHAR(255) | NULL | 分类描述 |
-| status | ENUM | DEFAULT 'active' | 状态：active(启用), inactive(禁用) |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
-
-**索引**:
-- PRIMARY KEY (`id`)
-- INDEX (`status`)
-- INDEX (`deletedAt`)
-
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `category` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(50) NOT NULL,
-  `description` VARCHAR(255) NULL,
-  `status` ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
-  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deletedAt` DATETIME NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_status` (`status`),
-  KEY `idx_deleted_at` (`deletedAt`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
----
-
-### 4. Tag (标签表)
-
-**表名**: `tag`
-
-**描述**: 存储文章标签信息
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 标签 ID |
-| name | VARCHAR(50) | NOT NULL | 标签名称 |
-| color | VARCHAR(7) | NULL | 标签颜色（十六进制） |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
-
-**索引**:
-- PRIMARY KEY (`id`)
-- INDEX (`deletedAt`)
-
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `tag` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(50) NOT NULL,
-  `color` VARCHAR(7) NULL,
-  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deletedAt` DATETIME NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_deleted_at` (`deletedAt`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
----
-
-### 5. PostTag (文章标签关联表)
-
-**表名**: `post_tag`
-
-**描述**: 文章和标签的多对多关联表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| postId | INT | PRIMARY KEY, FOREIGN KEY | 文章 ID |
-| tagId | INT | PRIMARY KEY, FOREIGN KEY | 标签 ID |
-
-**索引**:
-- PRIMARY KEY (`postId`, `tagId`)
-- INDEX (`tagId`)
-
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `post_tag` (
-  `postId` INT NOT NULL,
-  `tagId` INT NOT NULL,
-  PRIMARY KEY (`postId`, `tagId`),
-  KEY `idx_tag_id` (`tagId`),
-  CONSTRAINT `fk_post_tag_post` FOREIGN KEY (`postId`) REFERENCES `post` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_post_tag_tag` FOREIGN KEY (`tagId`) REFERENCES `tag` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
----
-
-### 6. Comment (评论表)
-
-**表名**: `comment`
-
-**描述**: 存储文章评论信息
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 评论 ID |
-| content | TEXT | NOT NULL | 评论内容 |
-| status | ENUM | DEFAULT 'pending' | 状态：pending(待审核), approved(已通过), rejected(已拒绝) |
-| postId | INT | NOT NULL, FOREIGN KEY | 文章 ID |
-| parentId | INT | NULL, FOREIGN KEY | 父评论 ID（用于回复） |
-| visitorId | VARCHAR(100) | NULL | 访客 ID |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
-
-**索引**:
-- PRIMARY KEY (`id`)
-- INDEX (`postId`)
-- INDEX (`parentId`)
-- INDEX (`status`)
-- INDEX (`visitorId`)
-- INDEX (`createdAt`)
-- INDEX (`deletedAt`)
-
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `comment` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `content` TEXT NOT NULL,
-  `status` ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
-  `postId` INT NOT NULL,
-  `parentId` INT NULL,
-  `visitorId` VARCHAR(100) NULL,
-  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `deletedAt` DATETIME NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_post_id` (`postId`),
-  KEY `idx_parent_id` (`parentId`),
-  KEY `idx_status` (`status`),
-  KEY `idx_visitor_id` (`visitorId`),
-  KEY `idx_created_at` (`createdAt`),
-  KEY `idx_deleted_at` (`deletedAt`),
-  CONSTRAINT `fk_comment_post` FOREIGN KEY (`postId`) REFERENCES `post` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_comment_parent` FOREIGN KEY (`parentId`) REFERENCES `comment` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
-
----
-
-### 7. Visitor (访客表)
-
-**表名**: `visitor`
+### 2. visitors（访客表）
 
 **描述**: 存储访客信息
 
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | VARCHAR(100) | PRIMARY KEY | 访客 ID |
-| fingerprint | VARCHAR(255) | NULL | 浏览器指纹 |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-
-**索引**:
-- PRIMARY KEY (`id`)
-- INDEX (`createdAt`)
-
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `visitor` (
-  `id` VARCHAR(100) NOT NULL,
-  `fingerprint` VARCHAR(255) NULL,
-  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_created_at` (`createdAt`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
+| 字段名         | 类型         | 约束                        | 说明                             |
+| -------------- | ------------ | --------------------------- | -------------------------------- |
+| id             | INT          | PRIMARY KEY, AUTO_INCREMENT | 访客 ID                          |
+| visitor_id     | VARCHAR(64)  | UNIQUE, NULL                | 前端 localStorage 中的 visitorId |
+| fingerprint    | VARCHAR(64)  | UNIQUE, NULL                | 浏览器指纹                       |
+| ip             | VARCHAR(50)  | NULL                        | IP 地址                          |
+| location       | VARCHAR(100) | NULL                        | 地理位置                         |
+| user_agent     | VARCHAR(255) | NULL                        | 用户代理                         |
+| last_active_at | DATETIME(6)  | NULL                        | 最后活跃时间（统计在线用）       |
+| created_at     | DATETIME(6)  | NOT NULL                    | 创建时间                         |
+| updated_at     | DATETIME(6)  | NOT NULL                    | 更新时间                         |
 
 ---
 
-### 8. VisitorLog (访客访问日志表)
-
-**表名**: `visitor_log`
+### 3. visitor_logs（访客日志表）
 
 **描述**: 存储访客访问记录
 
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 日志 ID |
-| visitorId | VARCHAR(100) | NOT NULL, FOREIGN KEY | 访客 ID |
-| url | VARCHAR(500) | NULL | 访问 URL |
-| referrer | VARCHAR(500) | NULL | 来源页面 |
-| userAgent | VARCHAR(500) | NULL | 用户代理 |
-| ip | VARCHAR(50) | NULL | IP 地址 |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
+| 字段名     | 类型         | 约束                        | 说明         |
+| ---------- | ------------ | --------------------------- | ------------ |
+| id         | INT          | PRIMARY KEY, AUTO_INCREMENT | 日志 ID      |
+| visitorId  | INT          | NULL, FK→visitors.id        | 访客 ID      |
+| ip         | VARCHAR(50)  | NOT NULL                    | IP 地址      |
+| userAgent  | VARCHAR(255) | NULL                        | 用户代理     |
+| pageUrl    | VARCHAR(255) | NULL                        | 访问页面 URL |
+| referer    | VARCHAR(255) | NULL                        | 来源页面     |
+| visited_at | DATETIME(6)  | NOT NULL                    | 访问时间     |
 
 **索引**:
+
 - PRIMARY KEY (`id`)
-- INDEX (`visitorId`)
-- INDEX (`createdAt`)
-- INDEX (`url`)
+- KEY (`visitorId`)
 
-**SQL 创建语句**:
-
-```sql
-CREATE TABLE `visitor_log` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `visitorId` VARCHAR(100) NOT NULL,
-  `url` VARCHAR(500) NULL,
-  `referrer` VARCHAR(500) NULL,
-  `userAgent` VARCHAR(500) NULL,
-  `ip` VARCHAR(50) NULL,
-  `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_visitor_id` (`visitorId`),
-  KEY `idx_created_at` (`createdAt`),
-  KEY `idx_url` (`url`(255)),
-  CONSTRAINT `fk_visitor_log_visitor` FOREIGN KEY (`visitorId`) REFERENCES `visitor` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-```
+**外键**: `visitorId` → `visitors(id)` ON DELETE SET NULL
 
 ---
 
-### 9. FriendLink (友链表)
+### 4. categories（分类表）
 
-**表名**: `friend_link`
+**描述**: 存储文章分类信息
 
-**描述**: 存储友情链接信息
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 友链 ID |
-| name | VARCHAR(100) | NOT NULL | 友链名称 |
-| url | VARCHAR(500) | NOT NULL | 友链 URL |
-| logo | VARCHAR(255) | NULL | Logo URL |
-| description | VARCHAR(255) | NULL | 描述 |
-| status | ENUM | DEFAULT 'active' | 状态：active(启用), inactive(禁用) |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
+| 字段名      | 类型        | 约束                        | 说明                 |
+| ----------- | ----------- | --------------------------- | -------------------- |
+| id          | INT         | PRIMARY KEY, AUTO_INCREMENT | 分类 ID              |
+| name        | VARCHAR(50) | UNIQUE, NOT NULL            | 分类名称             |
+| description | TEXT        | NULL                        | 分类描述             |
+| status      | TINYINT     | NOT NULL, DEFAULT 1         | 状态：1-启用，0-禁用 |
+| version     | INT         | NOT NULL, DEFAULT 1         | 版本号（乐观锁）     |
+| created_at  | DATETIME(6) | NOT NULL                    | 创建时间             |
+| updated_at  | DATETIME(6) | NOT NULL                    | 更新时间             |
 
 **索引**:
+
 - PRIMARY KEY (`id`)
-- INDEX (`status`)
-- INDEX (`deletedAt`)
+- UNIQUE KEY (`name`)
 
 ---
 
-### 10. GuestMessage (留言表)
+### 5. tags（标签表）
 
-**表名**: `guest_message`
+**描述**: 存储文章标签信息
 
-**描述**: 存储访客留言信息
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 留言 ID |
-| content | TEXT | NOT NULL | 留言内容 |
-| visitorId | VARCHAR(100) | NULL | 访客 ID |
-| nickname | VARCHAR(50) | NULL | 昵称 |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
+| 字段名      | 类型         | 约束                        | 说明                 |
+| ----------- | ------------ | --------------------------- | -------------------- |
+| id          | INT          | PRIMARY KEY, AUTO_INCREMENT | 标签 ID              |
+| name        | VARCHAR(50)  | UNIQUE, NOT NULL            | 标签名称             |
+| description | VARCHAR(500) | NULL                        | 标签描述             |
+| version     | INT          | NOT NULL, DEFAULT 1         | 版本号（乐观锁）     |
+| status      | TINYINT      | NOT NULL, DEFAULT 1         | 状态：1-启用，0-禁用 |
+| created_at  | DATETIME(6)  | NOT NULL                    | 创建时间             |
+| updated_at  | DATETIME(6)  | NOT NULL                    | 更新时间             |
 
 **索引**:
+
 - PRIMARY KEY (`id`)
-- INDEX (`visitorId`)
-- INDEX (`createdAt`)
-- INDEX (`deletedAt`)
+- UNIQUE KEY (`name`)
 
 ---
 
-### 11. Changelog (更新日志表)
+### 6. posts（文章表）
 
-**表名**: `changelog`
+**描述**: 存储博客文章信息
+
+| 字段名        | 类型         | 约束                        | 说明                           |
+| ------------- | ------------ | --------------------------- | ------------------------------ |
+| id            | INT          | PRIMARY KEY, AUTO_INCREMENT | 文章 ID                        |
+| title         | VARCHAR(200) | NOT NULL                    | 文章标题                       |
+| content       | TEXT         | NOT NULL                    | 文章内容                       |
+| summary       | VARCHAR(500) | NULL                        | 文章摘要                       |
+| coverImage    | VARCHAR(255) | NULL                        | 封面图片 URL                   |
+| isTop         | TINYINT(1)   | NOT NULL, DEFAULT 0         | 是否置顶                       |
+| isRecommended | TINYINT(1)   | NOT NULL, DEFAULT 0         | 是否推荐                       |
+| slug          | VARCHAR(100) | NULL                        | URL 别名                       |
+| views         | INT          | NOT NULL, DEFAULT 0         | 浏览量                         |
+| likes         | INT          | NOT NULL, DEFAULT 0         | 点赞数                         |
+| publishTime   | DATETIME(6)  | NULL                        | 发布时间                       |
+| status        | ENUM         | NOT NULL, DEFAULT 'draft'   | 状态：draft/published/archived |
+| user_id       | INT          | NULL, FK→users.id           | 作者 ID                        |
+| category_id   | INT          | NOT NULL, FK→categories.id  | 分类 ID                        |
+| created_at    | DATETIME(6)  | NOT NULL                    | 创建时间                       |
+| updated_at    | DATETIME(6)  | NOT NULL                    | 更新时间                       |
+
+**索引**:
+
+- PRIMARY KEY (`id`)
+- KEY (`user_id`)
+- KEY (`category_id`)
+- KEY (`status`)
+- KEY (`slug`)
+
+**外键**:
+
+- `user_id` → `users(id)` ON DELETE SET NULL
+- `category_id` → `categories(id)` ON DELETE RESTRICT
+
+---
+
+### 7. posts_tags（文章标签关联表）
+
+**描述**: 文章和标签的多对多关联表
+
+| 字段名  | 类型 | 约束                     | 说明    |
+| ------- | ---- | ------------------------ | ------- |
+| postsId | INT  | PRIMARY KEY, FK→posts.id | 文章 ID |
+| tagsId  | INT  | PRIMARY KEY, FK→tags.id  | 标签 ID |
+
+**索引**:
+
+- PRIMARY KEY (`postsId`, `tagsId`)
+- KEY (`tagsId`)
+
+**外键**:
+
+- `postsId` → `posts(id)` ON DELETE CASCADE
+- `tagsId` → `tags(id)` ON DELETE CASCADE
+
+---
+
+### 8. comments（评论表）
+
+**描述**: 存储文章评论信息
+
+| 字段名     | 类型        | 约束                        | 说明                            |
+| ---------- | ----------- | --------------------------- | ------------------------------- |
+| id         | INT         | PRIMARY KEY, AUTO_INCREMENT | 评论 ID                         |
+| content    | TEXT        | NOT NULL                    | 评论内容                        |
+| status     | ENUM        | NOT NULL, DEFAULT 'pending' | 状态：pending/approved/rejected |
+| likes      | INT         | NOT NULL, DEFAULT 0         | 点赞数                          |
+| user_id    | INT         | NULL, FK→users.id           | 评论用户 ID                     |
+| visitor_id | INT         | NULL, FK→visitors.id        | 评论访客 ID                     |
+| postId     | INT         | NOT NULL, FK→posts.id       | 所属文章 ID                     |
+| parentId   | INT         | NULL, FK→comments.id        | 父评论 ID（回复）               |
+| created_at | DATETIME(6) | NOT NULL                    | 创建时间                        |
+| updated_at | DATETIME(6) | NOT NULL                    | 更新时间                        |
+
+**索引**:
+
+- PRIMARY KEY (`id`)
+- KEY (`user_id`)
+- KEY (`visitor_id`)
+- KEY (`postId`)
+- KEY (`parentId`)
+- KEY (`status`)
+
+**外键**:
+
+- `user_id` → `users(id)` ON DELETE SET NULL
+- `visitor_id` → `visitors(id)` ON DELETE SET NULL
+- `postId` → `posts(id)` ON DELETE CASCADE
+- `parentId` → `comments(id)` ON DELETE SET NULL
+
+---
+
+### 9. announcements（公告表）
+
+**描述**: 存储系统公告信息
+
+| 字段名     | 类型         | 约束                        | 说明                           |
+| ---------- | ------------ | --------------------------- | ------------------------------ |
+| id         | INT          | PRIMARY KEY, AUTO_INCREMENT | 公告 ID                        |
+| title      | VARCHAR(200) | NOT NULL                    | 公告标题                       |
+| content    | TEXT         | NOT NULL                    | 公告内容                       |
+| status     | ENUM         | NOT NULL, DEFAULT 'draft'   | 状态：draft/published/archived |
+| isTop      | TINYINT(1)   | NOT NULL, DEFAULT 0         | 是否置顶                       |
+| views      | INT          | NOT NULL, DEFAULT 0         | 浏览量                         |
+| created_at | DATETIME(6)  | NOT NULL                    | 创建时间                       |
+| updated_at | DATETIME(6)  | NOT NULL                    | 更新时间                       |
+
+**索引**:
+
+- PRIMARY KEY (`id`)
+- KEY (`status`)
+
+---
+
+### 10. changelogs（更新日志表）
 
 **描述**: 存储系统更新日志
 
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 日志 ID |
-| version | VARCHAR(50) | NOT NULL | 版本号 |
-| content | TEXT | NOT NULL | 更新内容 |
-| releaseDate | DATE | NULL | 发布日期 |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-| deletedAt | DATETIME | NULL | 删除时间（软删除） |
+| 字段名      | 类型         | 约束                            | 说明                                      |
+| ----------- | ------------ | ------------------------------- | ----------------------------------------- |
+| id          | INT          | PRIMARY KEY, AUTO_INCREMENT     | 日志 ID                                   |
+| version     | VARCHAR(50)  | NOT NULL                        | 版本号                                    |
+| title       | VARCHAR(200) | NOT NULL                        | 更新标题                                  |
+| content     | TEXT         | NOT NULL                        | 更新内容                                  |
+| type        | ENUM         | NOT NULL, DEFAULT 'improvement' | 类型：feature/improvement/bugfix/security |
+| isPublished | TINYINT(1)   | NOT NULL, DEFAULT 0             | 是否发布                                  |
+| releaseDate | DATE         | NOT NULL                        | 发布日期                                  |
+| created_at  | DATETIME(6)  | NOT NULL                        | 创建时间                                  |
+| updated_at  | DATETIME(6)  | NOT NULL                        | 更新时间                                  |
 
 **索引**:
+
 - PRIMARY KEY (`id`)
-- INDEX (`version`)
-- INDEX (`releaseDate`)
-- INDEX (`deletedAt`)
+- KEY (`type`)
+- KEY (`isPublished`)
 
 ---
 
-### 12. Setting (设置表)
+### 11. friend_links（友链表）
 
-**表名**: `setting`
+**描述**: 存储友情链接信息
 
-**描述**: 存储系统设置
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 设置 ID |
-| key | VARCHAR(100) | UNIQUE, NOT NULL | 设置键 |
-| value | TEXT | NULL | 设置值 |
-| description | VARCHAR(255) | NULL | 描述 |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-
-**索引**:
-- PRIMARY KEY (`id`)
-- UNIQUE KEY (`key`)
+| 字段名      | 类型         | 约束                        | 说明     |
+| ----------- | ------------ | --------------------------- | -------- |
+| id          | INT          | PRIMARY KEY, AUTO_INCREMENT | 友链 ID  |
+| name        | VARCHAR(255) | NOT NULL                    | 友链名称 |
+| url         | VARCHAR(255) | NOT NULL                    | 友链 URL |
+| description | TEXT         | NULL                        | 友链描述 |
+| created_at  | DATETIME(6)  | NOT NULL                    | 创建时间 |
+| updated_at  | DATETIME(6)  | NOT NULL                    | 更新时间 |
 
 ---
 
-### 13. SeoSetting (SEO 设置表)
+### 12. seo_settings（SEO 设置表）
 
-**表名**: `seo_setting`
+**描述**: 存储 SEO 相关设置（单行配置，只保留最新一条）
 
-**描述**: 存储 SEO 相关设置
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 设置 ID |
-| title | VARCHAR(200) | NULL | 网站标题 |
-| keywords | VARCHAR(500) | NULL | 关键词 |
-| description | VARCHAR(500) | NULL | 描述 |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
-
-**索引**:
-- PRIMARY KEY (`id`)
+| 字段名         | 类型         | 约束                        | 说明                  |
+| -------------- | ------------ | --------------------------- | --------------------- |
+| id             | INT          | PRIMARY KEY, AUTO_INCREMENT | 设置 ID               |
+| title          | VARCHAR(255) | NOT NULL                    | 网站标题              |
+| description    | TEXT         | NULL                        | 网站描述              |
+| keywords       | TEXT         | NULL                        | 关键词                |
+| sitemap_url    | VARCHAR(255) | NULL                        | Sitemap URL           |
+| robots         | TEXT         | NULL                        | Robots 配置           |
+| canonical_url  | VARCHAR(255) | NULL                        | Canonical URL         |
+| og_title       | VARCHAR(255) | NULL                        | Open Graph 标题       |
+| og_description | TEXT         | NULL                        | Open Graph 描述       |
+| og_image       | VARCHAR(255) | NULL                        | Open Graph 图片       |
+| schema_markup  | TEXT         | NULL                        | Schema 结构化数据标记 |
+| meta_author    | VARCHAR(255) | NULL                        | Meta 作者             |
+| meta_viewport  | VARCHAR(255) | NULL                        | Meta 视口             |
+| created_at     | DATETIME(6)  | NOT NULL                    | 创建时间              |
+| updated_at     | DATETIME(6)  | NOT NULL                    | 更新时间              |
 
 ---
 
-### 14. IcpInfo (ICP 信息表)
+### 13. icp_info（ICP 备案信息表）
 
-**表名**: `icp_info`
+**描述**: 存储 ICP 备案信息（单行配置，只保留最新一条）
 
-**描述**: 存储 ICP 备案信息
+| 字段名       | 类型         | 约束                        | 说明             |
+| ------------ | ------------ | --------------------------- | ---------------- |
+| id           | INT          | PRIMARY KEY, AUTO_INCREMENT | 信息 ID          |
+| icp_number   | VARCHAR(255) | NULL                        | ICP 备案号       |
+| icp_url      | VARCHAR(255) | NULL                        | ICP 备案查询 URL |
+| website_name | VARCHAR(255) | NULL                        | 网站名称         |
+| created_at   | DATETIME(6)  | NOT NULL                    | 创建时间         |
+| updated_at   | DATETIME(6)  | NOT NULL                    | 更新时间         |
 
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | INT | PRIMARY KEY, AUTO_INCREMENT | 信息 ID |
-| icpNumber | VARCHAR(50) | NULL | ICP 备案号 |
-| createdAt | DATETIME | DEFAULT CURRENT_TIMESTAMP | 创建时间 |
-| updatedAt | DATETIME | DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP | 更新时间 |
+---
+
+### 14. guest_messages（留言表）
+
+**描述**: 存储访客留言信息
+
+| 字段名     | 类型         | 约束                        | 说明                            |
+| ---------- | ------------ | --------------------------- | ------------------------------- |
+| id         | INT          | PRIMARY KEY, AUTO_INCREMENT | 留言 ID                         |
+| content    | TEXT         | NOT NULL                    | 留言内容                        |
+| status     | ENUM         | NOT NULL, DEFAULT 'pending' | 状态：pending/approved/rejected |
+| nickname   | VARCHAR(50)  | NULL                        | 留言者昵称                      |
+| email      | VARCHAR(100) | NULL                        | 留言者邮箱                      |
+| user_id    | INT          | NULL, FK→users.id           | 用户 ID（登录用户留言时）       |
+| visitor_id | INT          | NULL, FK→visitors.id        | 访客 ID（游客留言时）           |
+| created_at | DATETIME(6)  | NOT NULL                    | 创建时间                        |
+| updated_at | DATETIME(6)  | NOT NULL                    | 更新时间                        |
 
 **索引**:
+
 - PRIMARY KEY (`id`)
+- KEY (`user_id`)
+- KEY (`visitor_id`)
+- KEY (`status`)
+
+**外键**:
+
+- `user_id` → `users(id)` ON DELETE SET NULL
+- `visitor_id` → `visitors(id)` ON DELETE SET NULL
 
 ---
 
@@ -512,49 +376,40 @@ CREATE TABLE `visitor_log` (
 ```
 User (1) ──< (N) Post
 Category (1) ──< (N) Post
-Post (N) ──< (N) Tag [通过 PostTag]
+Post (N) ──< (N) Tag [通过 posts_tags]
 Post (1) ──< (N) Comment
 Comment (1) ──< (N) Comment [自关联，parentId]
 Visitor (1) ──< (N) VisitorLog
+User (1) ──< (N) Comment [可选]
+User (1) ──< (N) GuestMessage [可选]
 Visitor (1) ──< (N) Comment [可选]
 Visitor (1) ──< (N) GuestMessage [可选]
 ```
 
 ### 关系详情
 
-1. **User ↔ Post**: 一对多
-   - 一个用户可写多篇文章
-   - 删除用户时，文章如何处理取决于业务需求（RESTRICT/SET NULL/CASCADE）
+1. **User ↔ Post**: 一对多。一个用户可写多篇文章。删除用户时文章保留（SET NULL）。
 
-2. **Category ↔ Post**: 一对多
-   - 一个分类包含多篇文章
-   - 删除分类时，文章的分类设置为 NULL（SET NULL）
+2. **Category ↔ Post**: 一对多。一个分类包含多篇文章。删除分类被阻止（RESTRICT）。
 
-3. **Post ↔ Tag**: 多对多
-   - 通过 `post_tag` 中间表关联
-   - 删除文章或标签时，关联记录自动删除（CASCADE）
+3. **Post ↔ Tag**: 多对多。通过 `posts_tags` 中间表关联。删除文章或标签时关联记录自动删除（CASCADE）。
 
-4. **Post ↔ Comment**: 一对多
-   - 一篇文章可有多个评论
-   - 删除文章时，评论自动删除（CASCADE）
+4. **Post ↔ Comment**: 一对多。一篇文章可有多个评论。删除文章时评论自动删除（CASCADE）。
 
-5. **Comment ↔ Comment**: 自关联（一对多）
-   - 评论可回复评论，形成树形结构
-   - 删除父评论时，子评论自动删除（CASCADE）
+5. **Comment ↔ Comment**: 自关联。评论可回复评论，形成树形结构。删除父评论时子评论保留（SET NULL）。
 
-6. **Visitor ↔ VisitorLog**: 一对多
-   - 一个访客可有多次访问记录
-   - 删除访客时，访问记录自动删除（CASCADE）
+6. **Visitor ↔ VisitorLog**: 一对多。一个访客可有多次访问记录。删除访客时日志保留（SET NULL）。
+
+7. **User/Visitor ↔ Comment/GuestMessage**: 可选关联。通过 `user_id` 或 `visitor_id` 关联到评论或留言。
 
 ## 索引设计
 
 ### 索引策略
 
-1. **主键索引**: 所有表都有主键索引
+1. **主键索引**: 所有表都有自增主键（除 `posts_tags` 为复合主键）
 2. **外键索引**: 所有外键字段都建立索引
-3. **查询字段索引**: 常用查询字段建立索引
-4. **软删除索引**: `deletedAt` 字段建立索引
-5. **时间字段索引**: `createdAt` 字段建立索引（用于排序和筛选）
+3. **查询字段索引**: 常用过滤字段（`status`、`isPublished`）建立索引
+4. **唯一索引**: `username`、`email`、`name` 等业务唯一字段
 
 ### 索引优化建议
 
@@ -566,18 +421,39 @@ Visitor (1) ──< (N) GuestMessage [可选]
 
 ### 枚举值说明
 
-#### Post.status
+#### Post.status / Announcement.status
+
 - `draft`: 草稿
 - `published`: 已发布
+- `archived`: 已归档
 
-#### Category.status / FriendLink.status
-- `active`: 启用
-- `inactive`: 禁用
+#### Category.status / Tag.status
 
-#### Comment.status
+- `0` (DISABLED): 禁用
+- `1` (ENABLED): 启用
+
+#### Comment.status / GuestMessage.status
+
 - `pending`: 待审核
 - `approved`: 已通过
 - `rejected`: 已拒绝
+
+#### Changelog.type
+
+- `feature`: 新功能
+- `improvement`: 改进
+- `bugfix`: 缺陷修复
+- `security`: 安全更新
+
+#### User.role
+
+- `0` (ADMIN): 管理员
+- `1` (SUPER_ADMIN): 超级管理员
+
+#### User.gender
+
+- `0` (FEMALE): 女
+- `1` (MALE): 男
 
 ## 迁移脚本
 
@@ -601,24 +477,8 @@ npm run migration:create ./src/migrations/your-migration-name
 npm run migration:generate ./src/migrations/update-table
 ```
 
-## 数据维护
+### 同步 Schema（开发环境）
 
-### 清理软删除数据
-
-定期清理已删除的数据（可选）：
-
-```sql
--- 清理 30 天前删除的文章
-DELETE FROM post WHERE deletedAt IS NOT NULL AND deletedAt < DATE_SUB(NOW(), INTERVAL 30 DAY);
+```bash
+npm run schema:sync
 ```
-
-### 数据备份
-
-参考 [部署文档](./DEPLOYMENT.md) 中的备份策略。
-
-### 性能优化
-
-1. **定期分析表**: `ANALYZE TABLE table_name;`
-2. **优化表**: `OPTIMIZE TABLE table_name;`
-3. **重建索引**: 根据实际情况重建索引
-4. **分区表**: 对于大表（如 `visitor_log`），考虑使用分区表

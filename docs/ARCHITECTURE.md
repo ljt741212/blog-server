@@ -28,7 +28,7 @@
 │                    API 网关层                             │
 │              (NestJS Application)                         │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │ 路由层   │  │ 中间件层  │  │ 守卫层   │              │
+│  │ 守卫层   │  │ 拦截器层  │  │ 管道层   │              │
 │  └──────────┘  └──────────┘  └──────────┘              │
 └────────────────────┬────────────────────────────────────┘
                      │
@@ -48,9 +48,9 @@
                      │
 ┌────────────────────▼────────────────────────────────────┐
 │                   数据存储层                              │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐              │
-│  │  MySQL   │  │ 阿里云OSS │  │  Redis   │              │
-│  └──────────┘  └──────────┘  └──────────┘              │
+│  ┌──────────────────┐  ┌──────────────────┐             │
+│  │      MySQL       │  │    阿里云 OSS    │             │
+│  └──────────────────┘  └──────────────────┘             │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -61,23 +61,25 @@
 1. **表现层 (Presentation Layer)**
    - Controllers: 处理 HTTP 请求和响应
    - DTOs: 数据传输对象，定义请求和响应的数据结构
-   - Guards: 路由守卫，处理认证和授权
+   - Guards: 路由守卫，处理认证和授权（JwtAuthGuard、SuperAdminGuard）
+   - Interceptors: 拦截器（TransformInterceptor 统一响应包装）
+   - Decorators: 自定义装饰器（@CurrentUser、@Bypass）
 
 2. **业务逻辑层 (Business Logic Layer)**
    - Services: 业务逻辑处理
-   - Entities: 领域实体模型
-   - Interceptors: 拦截器，处理响应转换、日志等
+   - Entities: 领域实体模型，继承自 CommonEntity
 
 3. **数据访问层 (Data Access Layer)**
    - TypeORM: ORM 框架
-   - Repositories: 数据访问抽象
-   - Migrations: 数据库迁移
+   - Repositories: 数据访问抽象（通过 InjectRepository）
+   - Migrations: 数据库迁移脚本
+   - QueryBuilder: 复杂查询构建
 
 ## 技术栈
 
 ### 核心框架
 
-- **NestJS**: 基于 Express/Fastify 的 Node.js 框架
+- **NestJS 11**: 基于 Express 的 Node.js 框架
   - 模块化设计
   - 依赖注入
   - 装饰器支持
@@ -85,15 +87,16 @@
 
 ### 数据库
 
-- **TypeORM**: ORM 框架
+- **TypeORM 0.3**: ORM 框架
   - 实体关系映射
   - 数据库迁移
   - 查询构建器
   - 事务支持
 
-- **MySQL**: 关系型数据库
+- **MySQL 8.0+**: 关系型数据库
   - 主数据存储
   - ACID 事务支持
+  - 字符集: utf8mb4
 
 ### 认证与安全
 
@@ -105,12 +108,12 @@
 
 - **阿里云 OSS**: 对象存储服务
   - 文件上传
-  - 文件访问
-  - CDN 加速
+  - 文件下载
+  - 签名 URL 生成
 
 ### 开发工具
 
-- **TypeScript**: 类型安全的 JavaScript
+- **TypeScript 5.7**: 类型安全的 JavaScript
 - **ESLint**: 代码检查
 - **Prettier**: 代码格式化
 - **Husky**: Git hooks 管理
@@ -124,231 +127,458 @@
 2. **高内聚低耦合**: 模块内部紧密相关，模块间依赖最小
 3. **可扩展性**: 易于添加新功能和模块
 
-### 核心模块
+### 业务模块
 
 #### 1. 用户模块 (User Module)
 
 **职责**:
-- 用户注册和登录
-- 用户信息管理
-- 密码管理
-- JWT token 生成和验证
 
-**关键文件**:
-- `user.controller.ts`: 处理用户相关 HTTP 请求
-- `user.service.ts`: 用户业务逻辑
-- `user.entity.ts`: 用户实体定义
-- `user.dto.ts`: 用户数据传输对象
+- 用户登录（JWT 签发）
+- 用户信息 CRUD
+- 密码修改
+- 当前用户信息查询
+
+**路径**: `src/modules/user/`
 
 #### 2. 文章模块 (Post Module)
 
 **职责**:
-- 文章的 CRUD 操作
-- 文章状态管理（草稿/发布）
-- 文章置顶功能
-- 浏览量统计
-- 点赞功能
 
-**关键文件**:
-- `post.controller.ts`: 文章 API 控制器
-- `post.service.ts`: 文章业务逻辑
-- `post.entity.ts`: 文章实体
-- `post.dto.ts`: 文章 DTO
+- 文章的 CRUD 操作
+- 文章状态管理（draft / published / archived）
+- 文章置顶功能
+- 浏览量/点赞数统计
+- 文章与分类、标签的关联
+
+**路径**: `src/modules/post/`
 
 #### 3. 分类模块 (Category Module)
 
 **职责**:
+
 - 分类的 CRUD 操作
-- 分类状态管理
-- 分类与文章的关联
+- 分类状态管理（0-禁用 / 1-启用）
+- 乐观锁版本控制
+
+**路径**: `src/modules/category/`
 
 #### 4. 标签模块 (Tag Module)
 
 **职责**:
+
 - 标签的 CRUD 操作
+- 标签状态管理（0-禁用 / 1-启用）
 - 标签与文章的多对多关系
-- 标签颜色管理
+- 乐观锁版本控制
+
+**路径**: `src/modules/tag/`
 
 #### 5. 评论模块 (Comment Module)
 
 **职责**:
-- 评论的创建和管理
-- 评论审核机制
-- 评论回复（父子关系）
+
+- 评论的创建（登录用户或访客均可）
+- 评论审核机制（pending / approved / rejected）
+- 评论回复（父子关系，parentId 自关联）
 - 评论状态管理
+
+**路径**: `src/modules/comment/`
 
 #### 6. 访客模块 (Visitor Module)
 
 **职责**:
+
 - 访客信息记录
 - 访问日志记录
-- 访客统计分析
+- 心跳在线状态维护
+- SSE 实时在线访客流推送
+- 访客仪表板统计
+
+**路径**: `src/modules/visitor/`
 
 #### 7. 文件上传模块 (OSS Module)
 
 **职责**:
-- 文件上传到 OSS
-- 文件访问 URL 生成
-- 文件下载
 
-### 公共模块
+- 文件上传到阿里云 OSS
+- 文件签名 URL 生成
+- 文件下载（流式传输）
 
-#### 1. Common Module
+**路径**: `src/modules/oss/`
+
+#### 8. 友链模块 (Friend Link Module)
+
+**职责**:
+
+- 友链的 CRUD 操作
+
+**路径**: `src/modules/friend-link/`
+
+#### 9. 留言模块 (Guest Message Module)
+
+**职责**:
+
+- 访客留言创建
+- 留言审核机制（pending / approved / rejected）
+- 留言列表查询
+
+**路径**: `src/modules/guest-message/`
+
+#### 10. 公告模块 (Announcement Module)
+
+**职责**:
+
+- 公告的 CRUD 操作
+- 公告状态管理（draft / published / archived）
+- 公告置顶功能
+
+**路径**: `src/modules/announcement/`
+
+#### 11. 更新日志模块 (Changelog Module)
+
+**职责**:
+
+- 更新日志的 CRUD 操作
+- 发布状态管理（isPublished）
+- 按类型（feature / improvement / bugfix / security）分类
+
+**路径**: `src/modules/changelog/`
+
+#### 12. 设置模块 (Setting Module)
+
+**职责**:
+
+- 聚合设置管理（SEO、友链、ICP 信息的组合读写）
+- 友链批量替换（事务性操作）
+
+**路径**: `src/modules/setting/`
+
+#### 13. SEO 设置模块 (SEO Setting Module)
+
+**职责**:
+
+- SEO 元数据存储（title、description、keywords、OG 标签、Schema 标记等）
+- 单行配置模式（只保留最新一条记录）
+
+**路径**: `src/modules/seo-setting/`
+
+#### 14. ICP 备案信息模块 (ICP Info Module)
+
+**职责**:
+
+- ICP 备案号、查询 URL、网站名称存储
+- 单行配置模式（只保留最新一条记录）
+
+**路径**: `src/modules/icp-info/`
+
+#### 15. 数据导入导出模块 (Data Transfer Module)
+
+**职责**:
+
+- 全量数据导出为 ZIP 文件
+- 从 ZIP 文件导入数据（清空后导入模式）
+- ZIP 文件完整性校验
+- 导入后 AUTO_INCREMENT 重置
+
+**权限**: 仅超级管理员（role=1）可访问
+
+**路径**: `src/modules/data-transfer/`
+
+### 共享模块
+
+#### Shared Module
+
+**Database Module** (`src/shared/database/`):
+
+- TypeORM 数据源配置
+- MySQL 连接管理
+
+**Entities Module** (`src/shared/database/entities.module.ts`):
+
+- 全局实体注册，供所有业务模块使用
+
+**Auth Module** (`src/shared/auth/`):
+
+- JWT 密钥配置
+- AuthUtil 工具类（token 解析、用户 ID 提取）
+
+### 公共模块 (Common Module)
+
+**路径**: `src/common/`
 
 **包含**:
-- Decorators: 自定义装饰器（如 `@CurrentUser`, `@Bypass`）
-- Guards: 路由守卫（JWT 认证守卫）
-- Interceptors: 拦截器（响应转换拦截器）
-- Pagination: 分页工具
-- Constants: 常量定义
-- Models: 通用数据模型
 
-#### 2. Shared Module
-
-**包含**:
-- Database Module: 数据库配置和连接
-- Entities Module: 实体注册
+- `decorators/bypass.decorator.ts`: `@Bypass()` 装饰器，标记方法跳过 TransformInterceptor 响应包装
+- `decorators/current-user.decorator.ts`: `@CurrentUser()` 装饰器，从请求中提取当前用户
+- `guards/jwt-auth.guard.ts`: JWT 认证守卫，验证 token 有效性
+- `guards/super-admin.guard.ts`: 超级管理员守卫，验证用户 role=1
+- `interceptors/transform.interceptor.ts`: 响应转换拦截器，统一包装为 `{ code, message, data }` 格式
+- `pagination/`: 分页 DTO 基类、类型定义和工具函数
+- `model/response.model.ts`: 统一响应模型
+- `constants/response.constant.ts`: 响应常量（状态码、消息）
 
 ## 数据库设计
 
 ### 设计原则
 
 1. **规范化**: 遵循数据库设计范式，减少数据冗余
-2. **索引优化**: 为常用查询字段添加索引
-3. **外键约束**: 保证数据完整性
-4. **软删除**: 使用 `deletedAt` 字段实现软删除
+2. **公共基类**: 所有业务表继承 `CommonEntity`（含 `id`、`created_at`、`updated_at`）
+3. **索引优化**: 为常用查询字段和外键添加索引
+4. **外键约束**: 保证数据完整性
+5. **不使用软删除**: 删除操作直接从数据库移除记录
 
 ### 核心表结构
 
-#### User (用户表)
+#### users（用户表）
 
 ```sql
-CREATE TABLE user (
+CREATE TABLE users (
   id INT PRIMARY KEY AUTO_INCREMENT,
   username VARCHAR(50) UNIQUE NOT NULL,
-  password VARCHAR(255) NOT NULL,
-  email VARCHAR(100),
-  avatar VARCHAR(255),
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  deletedAt DATETIME NULL
+  nickname VARCHAR(50) NULL,
+  password VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE NOT NULL,
+  phone VARCHAR(20) NULL,
+  wechat VARCHAR(50) NULL,
+  role TINYINT NOT NULL DEFAULT 0,
+  avatar VARCHAR(255) NULL,
+  bio TEXT NULL,
+  github_account VARCHAR(100) NULL,
+  gender TINYINT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
 );
 ```
 
-#### Post (文章表)
+#### posts（文章表）
 
 ```sql
-CREATE TABLE post (
+CREATE TABLE posts (
   id INT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(200) NOT NULL,
   content TEXT NOT NULL,
-  summary VARCHAR(500),
-  cover VARCHAR(255),
-  views INT DEFAULT 0,
-  likes INT DEFAULT 0,
-  isTop BOOLEAN DEFAULT FALSE,
-  status ENUM('draft', 'published') DEFAULT 'draft',
-  categoryId INT,
-  authorId INT NOT NULL,
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  deletedAt DATETIME NULL,
-  FOREIGN KEY (categoryId) REFERENCES category(id),
-  FOREIGN KEY (authorId) REFERENCES user(id)
+  summary VARCHAR(500) NULL,
+  cover_image VARCHAR(255) NULL,
+  is_top TINYINT(1) NOT NULL DEFAULT 0,
+  is_recommended TINYINT(1) NOT NULL DEFAULT 0,
+  slug VARCHAR(100) NULL,
+  views INT NOT NULL DEFAULT 0,
+  likes INT NOT NULL DEFAULT 0,
+  publish_time DATETIME(6) NULL,
+  status ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'draft',
+  user_id INT NULL,
+  category_id INT NOT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
 );
 ```
 
-#### Category (分类表)
+#### categories（分类表）
 
 ```sql
-CREATE TABLE category (
+CREATE TABLE categories (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(50) NOT NULL,
-  description VARCHAR(255),
-  status ENUM('active', 'inactive') DEFAULT 'active',
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  deletedAt DATETIME NULL
+  name VARCHAR(50) UNIQUE NOT NULL,
+  description TEXT NULL,
+  status TINYINT NOT NULL DEFAULT 1,
+  version INT NOT NULL DEFAULT 1,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
 );
 ```
 
-#### Tag (标签表)
+#### tags（标签表）
 
 ```sql
-CREATE TABLE tag (
+CREATE TABLE tags (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  name VARCHAR(50) NOT NULL,
-  color VARCHAR(7),
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  deletedAt DATETIME NULL
+  name VARCHAR(50) UNIQUE NOT NULL,
+  description VARCHAR(500) NULL,
+  version INT NOT NULL DEFAULT 1,
+  status TINYINT NOT NULL DEFAULT 1,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
 );
 ```
 
-#### PostTag (文章标签关联表)
+#### posts_tags（文章标签关联表）
 
 ```sql
-CREATE TABLE post_tag (
-  postId INT NOT NULL,
-  tagId INT NOT NULL,
-  PRIMARY KEY (postId, tagId),
-  FOREIGN KEY (postId) REFERENCES post(id) ON DELETE CASCADE,
-  FOREIGN KEY (tagId) REFERENCES tag(id) ON DELETE CASCADE
+CREATE TABLE posts_tags (
+  postsId INT NOT NULL,
+  tagsId INT NOT NULL,
+  PRIMARY KEY (postsId, tagsId),
+  FOREIGN KEY (postsId) REFERENCES posts(id) ON DELETE CASCADE,
+  FOREIGN KEY (tagsId) REFERENCES tags(id) ON DELETE CASCADE
 );
 ```
 
-#### Comment (评论表)
+#### comments（评论表）
 
 ```sql
-CREATE TABLE comment (
+CREATE TABLE comments (
   id INT PRIMARY KEY AUTO_INCREMENT,
   content TEXT NOT NULL,
-  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
-  postId INT NOT NULL,
-  parentId INT NULL,
-  visitorId VARCHAR(100),
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  deletedAt DATETIME NULL,
-  FOREIGN KEY (postId) REFERENCES post(id) ON DELETE CASCADE,
-  FOREIGN KEY (parentId) REFERENCES comment(id) ON DELETE CASCADE
+  status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+  likes INT NOT NULL DEFAULT 0,
+  user_id INT NULL,
+  visitor_id INT NULL,
+  post_id INT NOT NULL,
+  parent_id INT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE SET NULL,
+  FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+  FOREIGN KEY (parent_id) REFERENCES comments(id) ON DELETE SET NULL
 );
 ```
 
-#### Visitor (访客表)
+#### visitors（访客表）
 
 ```sql
-CREATE TABLE visitor (
-  id VARCHAR(100) PRIMARY KEY,
-  fingerprint VARCHAR(255),
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
-```
-
-#### VisitorLog (访客访问日志表)
-
-```sql
-CREATE TABLE visitor_log (
+CREATE TABLE visitors (
   id INT PRIMARY KEY AUTO_INCREMENT,
-  visitorId VARCHAR(100) NOT NULL,
-  url VARCHAR(500),
-  referrer VARCHAR(500),
-  userAgent VARCHAR(500),
-  ip VARCHAR(50),
-  createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (visitorId) REFERENCES visitor(id) ON DELETE CASCADE
+  visitor_id VARCHAR(64) UNIQUE NULL,
+  fingerprint VARCHAR(64) UNIQUE NULL,
+  ip VARCHAR(50) NULL,
+  location VARCHAR(100) NULL,
+  user_agent VARCHAR(255) NULL,
+  last_active_at DATETIME(6) NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
+#### visitor_logs（访客日志表）
+
+```sql
+CREATE TABLE visitor_logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  visitorId INT NULL,
+  ip VARCHAR(50) NOT NULL,
+  userAgent VARCHAR(255) NULL,
+  pageUrl VARCHAR(255) NULL,
+  referer VARCHAR(255) NULL,
+  visited_at DATETIME(6) NOT NULL,
+  FOREIGN KEY (visitorId) REFERENCES visitors(id) ON DELETE SET NULL
+);
+```
+
+#### announcements（公告表）
+
+```sql
+CREATE TABLE announcements (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  status ENUM('draft', 'published', 'archived') NOT NULL DEFAULT 'draft',
+  is_top TINYINT(1) NOT NULL DEFAULT 0,
+  views INT NOT NULL DEFAULT 0,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
+#### changelogs（更新日志表）
+
+```sql
+CREATE TABLE changelogs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  version VARCHAR(50) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  type ENUM('feature', 'improvement', 'bugfix', 'security') NOT NULL DEFAULT 'improvement',
+  is_published TINYINT(1) NOT NULL DEFAULT 0,
+  release_date DATE NOT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
+#### friend_links（友链表）
+
+```sql
+CREATE TABLE friend_links (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(255) NOT NULL,
+  url VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
+#### guest_messages（留言表）
+
+```sql
+CREATE TABLE guest_messages (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  content TEXT NOT NULL,
+  status ENUM('pending', 'approved', 'rejected') NOT NULL DEFAULT 'pending',
+  nickname VARCHAR(50) NULL,
+  email VARCHAR(100) NULL,
+  user_id INT NULL,
+  visitor_id INT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (visitor_id) REFERENCES visitors(id) ON DELETE SET NULL
+);
+```
+
+#### seo_settings（SEO 设置表）
+
+```sql
+CREATE TABLE seo_settings (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  keywords TEXT NULL,
+  sitemap_url VARCHAR(255) NULL,
+  robots TEXT NULL,
+  canonical_url VARCHAR(255) NULL,
+  og_title VARCHAR(255) NULL,
+  og_description TEXT NULL,
+  og_image VARCHAR(255) NULL,
+  schema_markup TEXT NULL,
+  meta_author VARCHAR(255) NULL,
+  meta_viewport VARCHAR(255) NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
+#### icp_info（ICP 备案信息表）
+
+```sql
+CREATE TABLE icp_info (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  icp_number VARCHAR(255) NULL,
+  icp_url VARCHAR(255) NULL,
+  website_name VARCHAR(255) NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
 );
 ```
 
 ### 关系说明
 
-1. **User ↔ Post**: 一对多（一个用户可写多篇文章）
-2. **Category ↔ Post**: 一对多（一个分类包含多篇文章）
-3. **Post ↔ Tag**: 多对多（一篇文章可有多个标签，一个标签可属于多篇文章）
-4. **Post ↔ Comment**: 一对多（一篇文章可有多个评论）
-5. **Comment ↔ Comment**: 自关联（评论可回复评论）
-6. **Visitor ↔ VisitorLog**: 一对多（一个访客可有多次访问记录）
+1. **User ↔ Post**: 一对多。删除用户时文章保留（SET NULL）。
+
+2. **Category ↔ Post**: 一对多。删除分类被阻止（RESTRICT）。
+
+3. **Post ↔ Tag**: 多对多。通过 `posts_tags` 中间表关联。删除文章或标签时关联记录自动删除（CASCADE）。
+
+4. **Post ↔ Comment**: 一对多。删除文章时评论自动删除（CASCADE）。
+
+5. **Comment ↔ Comment**: 自关联（parentId）。删除父评论时子评论保留（SET NULL）。
+
+6. **Visitor ↔ VisitorLog**: 一对多。删除访客时日志保留（SET NULL）。
+
+7. **User/Visitor ↔ Comment/GuestMessage**: 可选关联。通过 `user_id` 或 `visitor_id` 关联。
 
 ## 认证与授权
 
@@ -358,7 +588,7 @@ CREATE TABLE visitor_log (
 1. 用户登录
    POST /api/users/login
    ↓
-2. 验证用户名和密码
+2. 验证用户名和密码（bcrypt 比对）
    ↓
 3. 生成 JWT Token
    {
@@ -377,42 +607,39 @@ CREATE TABLE visitor_log (
 7. 提取用户信息并附加到请求对象
 ```
 
-### JWT 守卫实现
+### 守卫系统
 
-```typescript
-@Injectable()
-export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+**JwtAuthGuard**: 验证 JWT token 有效性，提取 `sub` 作为用户 ID 写入 `request.user`。
 
-  canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
-    const token = this.extractToken(request);
-    
-    if (!token) {
-      throw new UnauthorizedException('未提供登录凭证');
-    }
-
-    try {
-      const payload = this.jwtService.verify(token);
-      request.user = { id: payload.sub };
-      return true;
-    } catch {
-      throw new UnauthorizedException('登录已失效');
-    }
-  }
-}
-```
+**SuperAdminGuard**: 验证当前用户 role=1（超级管理员），用于 data-transfer 等敏感接口。
 
 ### 使用方式
 
 ```typescript
 @Controller('posts')
 export class PostController {
-  @Post()
-  @UseGuards(JwtAuthGuard)  // 使用守卫保护路由
-  create(@Body() dto: CreatePostDto) {
-    // 需要认证才能访问
-  }
+  @Get('page')
+  @UseGuards(JwtAuthGuard) // 需要认证
+  paginate() {}
+
+  @Get()
+  findAll() {} // 无需认证，公开接口
+}
+
+@Controller('data-transfer')
+@UseGuards(JwtAuthGuard, SuperAdminGuard) // 需要超级管理员
+export class DataTransferController {}
+```
+
+### @Bypass 装饰器
+
+标记在方法上，使该方法的响应跳过 `TransformInterceptor` 的统一包装（用于文件下载等直接流式响应的场景）。
+
+```typescript
+@Get('export')
+@Bypass()
+exportAll(@Res() res: Response) {
+  // 响应不会被包装为 { code, message, data }
 }
 ```
 
@@ -420,23 +647,21 @@ export class PostController {
 
 ### RESTful 规范
 
-遵循 RESTful API 设计规范：
-
 - **GET**: 获取资源
-- **POST**: 创建资源
-- **PUT**: 完整更新资源
-- **PATCH**: 部分更新资源
+- **POST**: 创建资源（部分模块也用于更新，当请求体含 id 时）
+- **PUT**: 完整更新资源或更新特定字段（状态、置顶等）
+- **PATCH**: 部分更新资源（category、tag 模块）
 - **DELETE**: 删除资源
 
 ### URL 命名规范
 
 - 使用名词复数形式: `/api/posts`, `/api/users`
-- 使用连字符分隔: `/api/friend-links`
-- 嵌套资源: `/api/posts/:id/comments`
+- 使用连字符分隔: `/api/friend-links`, `/api/guest-messages`
+- 特定操作使用动词路径: `/api/posts/:id/status`, `/api/users/change-password`
 
 ### 响应格式
 
-统一响应格式：
+统一响应格式（由 TransformInterceptor 自动包装）：
 
 ```typescript
 interface ApiResponse<T> {
@@ -445,6 +670,8 @@ interface ApiResponse<T> {
   data: T;
 }
 ```
+
+`@Bypass()` 装饰器可跳过此包装。
 
 ### 分页格式
 
@@ -463,42 +690,31 @@ interface PaginatedResponse<T> {
 
 ## 错误处理
 
-### 全局异常过滤器
+### 异常处理
 
-使用 NestJS 的异常过滤器统一处理错误：
+使用 NestJS 内置异常类进行错误处理：
 
-```typescript
-@Catch()
-export class HttpExceptionFilter implements ExceptionFilter {
-  catch(exception: unknown, host: ArgumentsHost) {
-    // 统一错误响应格式
-  }
-}
-```
-
-### 错误码定义
-
-- `200`: 成功
-- `400`: 请求参数错误
-- `401`: 未授权
-- `403`: 禁止访问
-- `404`: 资源不存在
-- `422`: 数据验证失败
-- `500`: 服务器内部错误
+- `BadRequestException`: 400 请求参数错误
+- `UnauthorizedException`: 401 未授权
+- `NotFoundException`: 404 资源不存在
 
 ### 数据验证
 
-使用 `class-validator` 进行数据验证：
+使用 `class-validator` 和 `class-transformer` 进行 DTO 验证：
 
 ```typescript
 export class CreatePostDto {
   @IsString()
-  @IsNotEmpty()
+  @MaxLength(200)
   title: string;
 
   @IsString()
-  @IsNotEmpty()
   content: string;
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  categoryId: number;
 }
 ```
 
@@ -513,81 +729,45 @@ export class CreatePostDto {
 
 ### 日志记录
 
-- 请求日志: 记录所有 HTTP 请求
-- 错误日志: 记录异常信息
-- 业务日志: 记录关键业务操作
+使用 NestJS 内置 Logger：
 
-### 日志格式
-
-```json
-{
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "level": "info",
-  "message": "User logged in",
-  "context": "UserService",
-  "userId": 1
-}
-```
+- Controller 层: 请求路由日志
+- Service 层: 业务操作日志（如数据导入导出）
+- 异常自动记录
 
 ## 性能优化
 
 ### 数据库优化
 
-1. **索引优化**: 为常用查询字段添加索引
-2. **查询优化**: 使用 `select` 指定查询字段
-3. **关联查询**: 合理使用 `relations` 避免 N+1 问题
-4. **分页查询**: 使用分页避免一次性加载大量数据
-
-### 缓存策略
-
-- Redis 缓存（可选）
-- 查询结果缓存
-- 静态资源缓存
+1. **索引优化**: 为常用查询字段（status、isPublished、外键）添加索引
+2. **查询优化**: 使用 QueryBuilder 构建精确查询
+3. **关联查询**: 使用 `leftJoinAndSelect` 一次性加载关联数据
+4. **分页查询**: 使用 `paginateQueryBuilderForAdmin` 统一分页
 
 ### 代码优化
 
 1. **异步处理**: 使用 `async/await` 处理异步操作
-2. **批量操作**: 使用批量插入/更新减少数据库交互
-3. **懒加载**: 合理使用关联查询的懒加载
+2. **批量操作**: 数据导入使用事务批量写入
+3. **流式传输**: 文件下载和导出使用 Stream 避免内存溢出
 
 ## 安全考虑
 
 1. **密码加密**: 使用 bcrypt 加密密码
 2. **SQL 注入防护**: 使用 TypeORM 的参数化查询
-3. **XSS 防护**: 输入验证和输出转义
-4. **CSRF 防护**: 使用 CSRF token（如需要）
-5. **速率限制**: API 请求频率限制（如需要）
-6. **HTTPS**: 生产环境使用 HTTPS
+3. **JWT 认证**: 所有管理接口需要有效 token
+4. **角色控制**: 超级管理员接口需要 role=1
+5. **文件上传**: 限制文件大小（1GB），校验 ZIP 文件签名
+6. **XSS 防护**: 输入验证（class-validator）
+7. **HTTPS**: 生产环境使用 HTTPS
 
 ## 扩展性
 
 ### 水平扩展
 
-- 无状态设计，支持多实例部署
+- 无状态设计（JWT 认证），支持多实例部署
 - 使用负载均衡器分发请求
-- 数据库读写分离（如需要）
 
 ### 功能扩展
 
-- 模块化设计，易于添加新功能
-- 插件化架构（如需要）
-- 微服务拆分（如需要）
-
-## 监控与运维
-
-### 健康检查
-
-- 提供健康检查接口
-- 数据库连接检查
-- 外部服务依赖检查
-
-### 性能监控
-
-- API 响应时间监控
-- 数据库查询性能监控
-- 错误率监控
-
-### 日志收集
-
-- 集中式日志收集
-- 日志分析和告警
+- 模块化设计，新增功能只需添加模块并在 AppModule 中注册
+- 公共模块（common、shared）提供可复用的守卫、拦截器、分页工具

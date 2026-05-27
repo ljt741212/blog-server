@@ -10,18 +10,17 @@ import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
+import { AuthUtil } from '@/shared/auth/auth.util';
 
 import {
   ChangePasswordDto,
   CreateUserDto,
   UpdateUserDto,
-  UserListQueryDto,
   UserLoginDto,
   UserPageQueryDto,
 } from './user.dto';
 import { User, UserRole } from './user.entity';
 
-/** 用户对外 JSON：统一小驼峰 */
 function toUserResponse(u: User) {
   return {
     id: String(u.id),
@@ -32,7 +31,6 @@ function toUserResponse(u: User) {
     wechat: u.wechat,
     avatar: u.avatar,
     role: u.role,
-    status: 1,
     bio: u.bio,
     github: u.githubAccount,
     createdAt: u.createdAt,
@@ -45,41 +43,20 @@ export class UserService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly jwtService: JwtService,
+    private readonly authUtil: AuthUtil,
   ) {}
 
-  private extractUserIdFromAuthorization(authorization?: string): number {
-    if (!authorization) throw new UnauthorizedException('未提供登录凭证');
-    const token = authorization.replace(/^Bearer\s+/i, '').trim();
-    if (!token) throw new UnauthorizedException('未提供登录凭证');
-
-    try {
-      const payload: { sub?: number; id?: number } =
-        this.jwtService.verify(token);
-      const userId = payload?.sub ?? payload?.id;
-      if (userId == null) throw new UnauthorizedException('登录信息无效');
-      return Number(userId);
-    } catch {
-      throw new UnauthorizedException('登录已失效，请重新登录');
-    }
-  }
-
   async paginateForAdmin(query: UserPageQueryDto) {
-    const normalized: UserListQueryDto = {
-      page: query.current ?? 1,
-      limit: query.pageSize ?? 10,
-      searchValue: query.searchValue,
-    };
-
     const qb = this.userRepository.createQueryBuilder('user');
 
-    if (normalized.searchValue) {
+    if (query.searchValue) {
       qb.andWhere('(user.username LIKE :kw OR user.email LIKE :kw)', {
-        kw: `%${normalized.searchValue}%`,
+        kw: `%${query.searchValue}%`,
       });
     }
 
     qb.orderBy('user.created_at', 'DESC');
-    const pageResult = await paginateQueryBuilderForAdmin(qb, normalized);
+    const pageResult = await paginateQueryBuilderForAdmin(qb, query);
 
     return {
       ...pageResult,
@@ -88,7 +65,7 @@ export class UserService {
   }
 
   async findCurrentUser(authorization?: string) {
-    const userId = this.extractUserIdFromAuthorization(authorization);
+    const userId = this.authUtil.extractUserId(authorization);
     return this.findDetailForAdmin(userId);
   }
 
@@ -112,11 +89,27 @@ export class UserService {
   }
 
   async create(dto: CreateUserDto) {
-    const username = dto.Name ?? dto.username;
-    const email = dto.Email ?? dto.email;
+    const {
+      username,
+      email,
+      password,
+      nickname,
+      phone,
+      wechat,
+      avatar,
+      bio,
+      github,
+      gender,
+      role,
+    } = dto;
+
     if (!username || !email) {
       throw new BadRequestException('用户名和邮箱必填');
     }
+    if (!password) {
+      throw new BadRequestException('密码不能为空');
+    }
+
     const exists = await this.userRepository.findOne({
       where: [{ username }, { email }],
     });
@@ -124,27 +117,18 @@ export class UserService {
       throw new BadRequestException('用户名或邮箱已存在');
     }
 
-    const nickname = dto.NikName ?? dto.nickname;
-    const phone = dto.Phone ?? dto.phone;
-    const wechat = dto.WeChat ?? dto.wechat;
-    const avatar = dto.Avatar ?? dto.avatar;
-    const bio = dto.Description ?? dto.bio;
-    const githubAccount = dto.GitHub ?? dto.githubAccount ?? dto.github;
-    const { password: dtoPassword, gender, role } = dto;
-
-    const rawPassword = dtoPassword ?? '123456';
-    const password = await bcrypt.hash(rawPassword, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
     const entity = this.userRepository.create({
       username,
       nickname,
-      password,
+      password: hashedPassword,
       email,
       phone,
       wechat,
       avatar,
       bio,
-      githubAccount,
+      githubAccount: github,
       gender,
       role,
     });
@@ -155,17 +139,19 @@ export class UserService {
   async update(id: number, dto: UpdateUserDto) {
     const user = await this.findOne(id);
 
-    const username = dto.Name ?? dto.username;
-    const nickname = dto.NikName ?? dto.nickname;
-    const email = dto.Email ?? dto.email;
-    const phone = dto.Phone ?? dto.phone;
-    const wechat = dto.WeChat ?? dto.wechat;
-    const avatar = dto.Avatar ?? dto.avatar;
-    const bio = dto.Description ?? dto.bio;
-    const githubAccount = dto.GitHub ?? dto.githubAccount ?? dto.github;
-    const password = dto.Password ?? dto.password;
-    const gender = dto.Gender ?? dto.gender;
-    const role = dto.Role ?? dto.role;
+    const {
+      username,
+      nickname,
+      email,
+      phone,
+      wechat,
+      avatar,
+      bio,
+      github,
+      password,
+      gender,
+      role,
+    } = dto;
 
     if (username && username !== user.username) {
       const exists = await this.userRepository.findOne({ where: { username } });
@@ -178,16 +164,15 @@ export class UserService {
       user.email = email;
     }
 
-    if (typeof password !== 'undefined') {
-      user.password = await bcrypt.hash(password, 10);
+    if (typeof password === 'string' && password.length > 0) {
+      user.password = await bcrypt.hash(password, 12);
     }
     if (typeof nickname !== 'undefined') user.nickname = nickname;
     if (typeof phone !== 'undefined') user.phone = phone;
     if (typeof wechat !== 'undefined') user.wechat = wechat;
     if (typeof avatar !== 'undefined') user.avatar = avatar;
     if (typeof bio !== 'undefined') user.bio = bio;
-    if (typeof githubAccount !== 'undefined')
-      user.githubAccount = githubAccount;
+    if (typeof github !== 'undefined') user.githubAccount = github;
     if (typeof gender !== 'undefined') user.gender = gender;
     if (typeof role !== 'undefined') user.role = role;
 
@@ -209,15 +194,7 @@ export class UserService {
       throw new UnauthorizedException('用户名或密码错误');
     }
 
-    let isValid = await bcrypt.compare(dto.password, user.password);
-    if (!isValid) {
-      if (user.password === dto.password) {
-        user.password = await bcrypt.hash(dto.password, 10);
-        await this.userRepository.save(user);
-        isValid = true;
-      }
-    }
-
+    const isValid = await bcrypt.compare(dto.password, user.password);
     if (!isValid) throw new UnauthorizedException('用户名或密码错误');
 
     const payload = {
@@ -238,7 +215,7 @@ export class UserService {
     authorization: string | undefined,
     dto: ChangePasswordDto,
   ) {
-    const userId = this.extractUserIdFromAuthorization(authorization);
+    const userId = this.authUtil.extractUserId(authorization);
     const user = await this.findOne(userId);
 
     const isValid = await bcrypt.compare(dto.oldPassword, user.password);
@@ -246,7 +223,7 @@ export class UserService {
       throw new UnauthorizedException('原密码错误');
     }
 
-    user.password = await bcrypt.hash(dto.newPassword, 10);
+    user.password = await bcrypt.hash(dto.newPassword, 12);
     await this.userRepository.save(user);
     return { message: '密码修改成功' };
   }

@@ -17,4 +17,10 @@ export class AppController {
   getHelloBypass(): string {
     return this.appService.getHello();
   }
+
+  @Get('health')
+  @Bypass()
+  health() {
+    return { status: 'ok', timestamp: Date.now() };
+  }
 }

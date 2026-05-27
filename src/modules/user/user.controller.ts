@@ -65,23 +65,12 @@ export class UserController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  save(
-    @Body()
-    dto:
-      | CreateUserDto
-      | (UpdateUserDto & { id?: number | string; Id?: string }),
-  ) {
-    const rawId = 'id' in dto ? dto.id : (dto as { Id?: string }).Id;
-    if (rawId != null && rawId !== '') {
-      const id = Number(rawId);
-      if (Number.isFinite(id) && id > 0) {
-        const rest = { ...dto };
-        delete (rest as Record<string, unknown>).id;
-        delete (rest as Record<string, unknown>).Id;
-        return this.userService.update(id, rest as UpdateUserDto);
-      }
+  save(@Body() dto: CreateUserDto & { id?: number }) {
+    if (dto.id != null && dto.id > 0) {
+      const { id, ...rest } = dto;
+      return this.userService.update(id, rest as UpdateUserDto);
     }
-    return this.userService.create(dto as CreateUserDto);
+    return this.userService.create(dto);
   }
 
   @Put(':id')

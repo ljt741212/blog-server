@@ -26,34 +26,22 @@ export class UserLoginDto {
 }
 
 export class CreateUserDto {
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  username?: string;
-
-  @IsOptional()
-  @IsString()
-  Name?: string;
+  username: string;
 
   @IsOptional()
   @IsString()
   nickname?: string;
 
-  @IsOptional()
-  @IsString()
-  NikName?: string;
-
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
   @MinLength(4)
-  password?: string;
+  password: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsEmail()
-  Email?: string;
+  email: string;
 
   @IsOptional()
   @IsString()
@@ -61,15 +49,7 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  Phone?: string;
-
-  @IsOptional()
-  @IsString()
   wechat?: string;
-
-  @IsOptional()
-  @IsString()
-  WeChat?: string;
 
   @IsOptional()
   @IsString()
@@ -77,25 +57,8 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-  Avatar?: string;
-
-  @IsOptional()
-  @IsString()
   bio?: string;
 
-  @IsOptional()
-  @IsString()
-  Description?: string;
-
-  @IsOptional()
-  @IsString()
-  githubAccount?: string;
-
-  @IsOptional()
-  @IsString()
-  GitHub?: string;
-
-  /** 前端对外 JSON 字段：github */
   @IsOptional()
   @IsString()
   github?: string;
@@ -109,19 +72,10 @@ export class CreateUserDto {
   role?: UserRole;
 }
 
-/** 修改用户入参：小驼峰为主，仍兼容历史大驼峰字段 */
 export class UpdateUserDto {
   @IsOptional()
   @IsString()
-  Name?: string;
-
-  @IsOptional()
-  @IsString()
   username?: string;
-
-  @IsOptional()
-  @IsString()
-  NikName?: string;
 
   @IsOptional()
   @IsString()
@@ -130,16 +84,7 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   @MinLength(4)
-  Password?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(4)
   password?: string;
-
-  @IsOptional()
-  @IsEmail()
-  Email?: string;
 
   @IsOptional()
   @IsEmail()
@@ -147,15 +92,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  Phone?: string;
-
-  @IsOptional()
-  @IsString()
   phone?: string;
-
-  @IsOptional()
-  @IsString()
-  WeChat?: string;
 
   @IsOptional()
   @IsString()
@@ -163,15 +100,7 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  Avatar?: string;
-
-  @IsOptional()
-  @IsString()
   avatar?: string;
-
-  @IsOptional()
-  @IsString()
-  Description?: string;
 
   @IsOptional()
   @IsString()
@@ -179,28 +108,11 @@ export class UpdateUserDto {
 
   @IsOptional()
   @IsString()
-  GitHub?: string;
-
-  @IsOptional()
-  @IsString()
-  githubAccount?: string;
-
-  /** 前端对外 JSON 字段：github */
-  @IsOptional()
-  @IsString()
   github?: string;
 
   @IsOptional()
   @IsEnum(Gender)
-  Gender?: Gender;
-
-  @IsOptional()
-  @IsEnum(Gender)
   gender?: Gender;
-
-  @IsOptional()
-  @IsEnum(UserRole)
-  Role?: UserRole;
 
   @IsOptional()
   @IsEnum(UserRole)

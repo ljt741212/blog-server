@@ -8,22 +8,7 @@ import {
   Min,
 } from 'class-validator';
 
-import { PaginationQueryDto } from '@/common';
-
 import { CategoryStatus } from './category.entity';
-
-export class CategoryListQueryDto extends PaginationQueryDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  keyword?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @IsEnum(CategoryStatus)
-  status?: CategoryStatus;
-}
 
 export class CategoryPageQueryDto {
   @IsOptional()

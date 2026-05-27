@@ -6,12 +6,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { paginateQueryBuilderForAdmin, PaginationQueryDto } from '@/common';
+import { paginateQueryBuilderForAdmin } from '@/common';
 import { Post } from '@/modules/post/post.entity';
 import { Visitor } from '@/modules/visitor/visitor.entity';
 
 import {
-  CommentPageQueryDto,
+  CommentAdminPageQueryDto,
   CommentsByPostQueryDto,
   CreateCommentDto,
 } from './comment.dto';
@@ -63,10 +63,10 @@ export class CommentService {
       status: CommentStatus.PENDING,
     });
     const saved = await this.commentRepository.save(comment);
-    return this.commentRepository.findOne({
+    return this.commentRepository.findOneOrFail({
       where: { id: saved.id },
       relations: ['user', 'visitor', 'post'],
-    }) as Promise<Comment>;
+    });
   }
 
   async updateStatus(id: number, status: CommentStatus): Promise<boolean> {
@@ -77,19 +77,7 @@ export class CommentService {
     return true;
   }
 
-  async paginate(query: CommentPageQueryDto) {
-    const normalized: PaginationQueryDto & {
-      postId?: number;
-      status?: CommentStatus;
-      keyword?: string;
-    } = {
-      page: query.page ?? 1,
-      limit: query.limit ?? 10,
-      postId: query.postId,
-      status: query.status,
-      keyword: query.keyword,
-    };
-
+  async paginateForAdmin(query: CommentAdminPageQueryDto) {
     const qb = this.commentRepository
       .createQueryBuilder('comment')
       .leftJoinAndSelect('comment.user', 'user')
@@ -97,41 +85,24 @@ export class CommentService {
       .leftJoinAndSelect('comment.post', 'post')
       .leftJoinAndSelect('comment.parent', 'parent');
 
-    if (normalized.postId) {
-      qb.andWhere('comment.postId = :postId', { postId: normalized.postId });
+    if (query.postId) {
+      qb.andWhere('comment.postId = :postId', { postId: query.postId });
     }
-    if (normalized.status !== undefined) {
-      qb.andWhere('comment.status = :status', { status: normalized.status });
+    if (query.status !== undefined) {
+      qb.andWhere('comment.status = :status', { status: query.status });
     }
-    if (normalized.keyword) {
+    if (query.searchValue) {
       qb.andWhere('comment.content LIKE :kw', {
-        kw: `%${normalized.keyword}%`,
+        kw: `%${query.searchValue}%`,
       });
     }
 
     qb.orderBy('comment.createdAt', 'DESC');
-    const page = await paginateQueryBuilderForAdmin(qb, normalized);
+    const page = await paginateQueryBuilderForAdmin(qb, query);
     return {
       ...page,
       items: page.items.map((c) => this.buildCommentItem(c)),
     };
-  }
-
-  async paginateForAdmin(query: {
-    current?: number;
-    pageSize?: number;
-    postId?: number;
-    status?: CommentStatus;
-    searchValue?: string;
-  }) {
-    const normalized: CommentPageQueryDto = {
-      page: query.current ?? 1,
-      limit: query.pageSize ?? 10,
-      postId: query.postId,
-      status: query.status,
-      keyword: query.searchValue,
-    };
-    return this.paginate(normalized);
   }
 
   async findByPostId(query: CommentsByPostQueryDto) {
@@ -142,7 +113,12 @@ export class CommentService {
       .createQueryBuilder('comment')
       .leftJoinAndSelect('comment.user', 'user')
       .leftJoinAndSelect('comment.visitor', 'visitor')
-      .leftJoinAndSelect('comment.replies', 'replies')
+      .leftJoinAndSelect(
+        'comment.replies',
+        'replies',
+        approvedOnly ? 'replies.status = :replyStatus' : undefined,
+        approvedOnly ? { replyStatus: CommentStatus.APPROVED } : undefined,
+      )
       .leftJoinAndSelect('replies.user', 'replyUser')
       .leftJoinAndSelect('replies.visitor', 'replyVisitor')
       .where('comment.postId = :postId', { postId })
