@@ -51,6 +51,7 @@ function metaStr(
 
 function downloadBuffer(
   url: string,
+  maxRedirects = 5,
 ): Promise<{ buffer: Buffer; mime: string } | null> {
   return new Promise((resolve) => {
     const transport = url.startsWith('https') ? https : http;
@@ -58,13 +59,19 @@ function downloadBuffer(
       url,
       { timeout: 30000, headers: { 'User-Agent': 'blog-import/1.0' } },
       (res) => {
-        // Follow redirects (up to 3 hops)
         if ([301, 302, 307, 308].includes(res.statusCode ?? 0)) {
-          const redirectUrl = res.headers.location;
-          if (redirectUrl) {
-            resolve(downloadBuffer(redirectUrl));
+          res.resume();
+          if (maxRedirects <= 0) {
+            resolve(null);
             return;
           }
+          const redirectUrl = res.headers.location;
+          if (redirectUrl) {
+            resolve(downloadBuffer(redirectUrl, maxRedirects - 1));
+          } else {
+            resolve(null);
+          }
+          return;
         }
         if (!res.statusCode || res.statusCode >= 400) {
           res.resume();
@@ -230,7 +237,7 @@ export class WordPressImportService {
           summary: this.extractSummary(markdown),
           status:
             item.status === 'publish' ? PostStatus.PUBLISHED : PostStatus.DRAFT,
-          publishTime: item.post_date ? new Date(item.post_date) : null,
+          publishTime: this.parseDate(item.post_date),
           views,
           likes,
           user: author,
@@ -372,7 +379,12 @@ export class WordPressImportService {
       return null;
     }
 
-    const filename = path.basename(new URL(src).pathname) || 'image.png';
+    let filename = 'image.png';
+    try {
+      filename = path.basename(new URL(src).pathname) || 'image.png';
+    } catch {
+      /* keep default */
+    }
     const mockFile = {
       buffer: dl.buffer,
       originalname: filename,
@@ -391,6 +403,14 @@ export class WordPressImportService {
       this.logger.warn(`Failed to upload to OSS: ${src}`, msg);
       return null;
     }
+  }
+
+  // ── private: misc ──
+
+  private parseDate(raw: string | undefined): Date | null {
+    if (!raw) return null;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
   }
 
   // ── private: summary ──
