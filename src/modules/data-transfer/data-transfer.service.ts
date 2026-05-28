@@ -11,10 +11,10 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import archiver from 'archiver';
 import { DataSource } from 'typeorm';
 import * as unzipper from 'unzipper';
 
+import type archiver from 'archiver';
 import type { Response } from 'express';
 
 type ImportMode = 'truncate';
@@ -59,6 +59,22 @@ function buildInsertSql(table: string, columns: string[], rowCount: number) {
   return `INSERT INTO ${quoteId(table)} (${cols}) VALUES ${values}`;
 }
 
+// archiver v8 is ESM-only with named exports; @types/archiver v7 is CJS-style
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _archiverModule = require('archiver') as {
+  ZipArchive: new (options?: Record<string, unknown>) => archiver.Archiver;
+  TarArchive: new (options?: Record<string, unknown>) => archiver.Archiver;
+};
+
+const archiverCreate = (
+  format: 'zip' | 'tar',
+  options?: Record<string, unknown>,
+): archiver.Archiver => {
+  return format === 'zip'
+    ? new _archiverModule.ZipArchive(options)
+    : new _archiverModule.TarArchive(options);
+};
+
 @Injectable()
 export class DataTransferService {
   private readonly logger = new Logger(DataTransferService.name);
@@ -80,7 +96,7 @@ export class DataTransferService {
         `attachment; filename="${fileName}"`,
       );
 
-      const zip = archiver('zip', { zlib: { level: 9 } });
+      const zip = archiverCreate('zip', { zlib: { level: 9 } });
       zip.on('error', (err) => {
         res.destroy(err);
       });
