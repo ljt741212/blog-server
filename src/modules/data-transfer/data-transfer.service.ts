@@ -11,10 +11,10 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import archiver from 'archiver';
 import { DataSource } from 'typeorm';
 import * as unzipper from 'unzipper';
 
+import type archiver from 'archiver';
 import type { Response } from 'express';
 
 type ImportMode = 'truncate';
@@ -39,8 +39,21 @@ type ExportMeta = {
 };
 
 function jsonReplacer(key: string, value: unknown) {
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date)
+    return value.toISOString().replace('T', ' ').replace('Z', '');
   return value;
+}
+
+/**
+ * MySQL datetime columns don't accept ISO 8601 format (with T separator or Z suffix).
+ * Convert ISO 8601 datetime strings to MySQL-compatible format during import.
+ */
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/;
+function sanitizeValue(v: unknown): unknown {
+  if (typeof v === 'string' && ISO_DATETIME_RE.test(v)) {
+    return v.replace('T', ' ').replace('Z', '');
+  }
+  return v;
 }
 
 function quoteId(name: string) {
@@ -58,6 +71,22 @@ function buildInsertSql(table: string, columns: string[], rowCount: number) {
   const values = new Array(rowCount).fill(oneRow).join(', ');
   return `INSERT INTO ${quoteId(table)} (${cols}) VALUES ${values}`;
 }
+
+// archiver v8 is ESM-only with named exports; @types/archiver v7 is CJS-style
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _archiverModule = require('archiver') as {
+  ZipArchive: new (options?: Record<string, unknown>) => archiver.Archiver;
+  TarArchive: new (options?: Record<string, unknown>) => archiver.Archiver;
+};
+
+const archiverCreate = (
+  format: 'zip' | 'tar',
+  options?: Record<string, unknown>,
+): archiver.Archiver => {
+  return format === 'zip'
+    ? new _archiverModule.ZipArchive(options)
+    : new _archiverModule.TarArchive(options);
+};
 
 @Injectable()
 export class DataTransferService {
@@ -80,7 +109,7 @@ export class DataTransferService {
         `attachment; filename="${fileName}"`,
       );
 
-      const zip = archiver('zip', { zlib: { level: 9 } });
+      const zip = archiverCreate('zip', { zlib: { level: 9 } });
       zip.on('error', (err) => {
         res.destroy(err);
       });
@@ -231,7 +260,7 @@ export class DataTransferService {
             for (const row of batch) {
               for (const col of columns) {
                 const v = row[col];
-                params.push(typeof v === 'undefined' ? null : v);
+                params.push(typeof v === 'undefined' ? null : sanitizeValue(v));
               }
             }
 

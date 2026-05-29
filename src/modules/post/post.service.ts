@@ -43,6 +43,18 @@ export class PostService {
       qb.andWhere('post.status = :status', { status: query.status });
     }
 
+    if (query.categoryId) {
+      qb.andWhere('post.category_id = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+
+    if (query.tagId) {
+      qb.innerJoin('post.tags', 'tagFilter', 'tagFilter.id = :tagId', {
+        tagId: query.tagId,
+      });
+    }
+
     qb.orderBy('post.createdAt', 'DESC');
     const page = await paginateQueryBuilderForAdmin(qb, query);
 
@@ -63,6 +75,18 @@ export class PostService {
     if (query?.searchValue) {
       qb.andWhere('(post.title LIKE :kw OR post.summary LIKE :kw)', {
         kw: `%${query.searchValue}%`,
+      });
+    }
+
+    if (query?.categoryId) {
+      qb.andWhere('post.category_id = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+
+    if (query?.tagId) {
+      qb.innerJoin('post.tags', 'tagFilter', 'tagFilter.id = :tagId', {
+        tagId: query.tagId,
       });
     }
 

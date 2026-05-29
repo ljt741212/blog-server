@@ -13,6 +13,7 @@ import { CategoryModule } from './modules/category/category.module';
 import { ChangelogModule } from './modules/changelog/changelog.module';
 import { CommentModule } from './modules/comment/comment.module';
 import { DataTransferModule } from './modules/data-transfer/data-transfer.module';
+import { EmailModule } from './modules/email/email.module';
 import { FriendLinkModule } from './modules/friend-link/friend-link.module';
 import { GuestMessageModule } from './modules/guest-message/guest-message.module';
 import { IcpInfoModule } from './modules/icp-info/icp-info.module';
@@ -65,6 +66,7 @@ import { EntitiesModule } from './shared/database/entities.module';
     VisitorModule,
     OssModule,
     DataTransferModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [

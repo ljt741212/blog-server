@@ -19,13 +19,17 @@ import { diskStorage } from 'multer';
 import { Bypass, JwtAuthGuard, SuperAdminGuard } from '@/common';
 
 import { DataTransferService } from './data-transfer.service';
+import { WordPressImportService } from './wordpress-import.service';
 
 import type { Response } from 'express';
 
 @Controller('data-transfer')
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
 export class DataTransferController {
-  constructor(private readonly dataTransferService: DataTransferService) {}
+  constructor(
+    private readonly dataTransferService: DataTransferService,
+    private readonly wpImportService: WordPressImportService,
+  ) {}
 
   @Get('export')
   @Bypass()
@@ -61,5 +65,26 @@ export class DataTransferController {
     return this.dataTransferService.importAllFromZip(file.path, {
       mode: mode ?? 'truncate',
     });
+  }
+
+  @Post('import-wordpress')
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (req, file, cb) => cb(null, os.tmpdir()),
+        filename: (req, file, cb) => {
+          const suffix = extname(file.originalname || '') || '.xml';
+          cb(null, `wp-import-${Date.now()}${suffix}`);
+        },
+      }),
+      limits: {
+        fileSize: 1024 * 1024 * 100, // 100MB XML
+      },
+    }),
+  )
+  async importWordPress(@UploadedFile() file?: Express.Multer.File) {
+    if (!file?.path) throw new BadRequestException('缺少上传文件 file');
+    return this.wpImportService.importFromXml(file.path);
   }
 }
