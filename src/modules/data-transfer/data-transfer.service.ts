@@ -39,8 +39,21 @@ type ExportMeta = {
 };
 
 function jsonReplacer(key: string, value: unknown) {
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date)
+    return value.toISOString().replace('T', ' ').replace('Z', '');
   return value;
+}
+
+/**
+ * MySQL datetime columns don't accept ISO 8601 format (with T separator or Z suffix).
+ * Convert ISO 8601 datetime strings to MySQL-compatible format during import.
+ */
+const ISO_DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$/;
+function sanitizeValue(v: unknown): unknown {
+  if (typeof v === 'string' && ISO_DATETIME_RE.test(v)) {
+    return v.replace('T', ' ').replace('Z', '');
+  }
+  return v;
 }
 
 function quoteId(name: string) {
@@ -247,7 +260,7 @@ export class DataTransferService {
             for (const row of batch) {
               for (const col of columns) {
                 const v = row[col];
-                params.push(typeof v === 'undefined' ? null : v);
+                params.push(typeof v === 'undefined' ? null : sanitizeValue(v));
               }
             }
 
