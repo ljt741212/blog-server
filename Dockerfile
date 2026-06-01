@@ -29,6 +29,7 @@ COPY package.json ./
 RUN pnpm install --frozen-lockfile --offline --prod --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/database ./database
 COPY docker-entrypoint.sh ./
 
 RUN chmod +x docker-entrypoint.sh
