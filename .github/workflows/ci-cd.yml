@@ -81,6 +81,12 @@ jobs:
 
             cd ${{ secrets.DEPLOY_PATH }}
 
+            if [ ! -f .env ]; then
+              echo ">>> creating .env from secret..."
+              echo "${{ secrets.ENV_FILE }}" | base64 -d > .env
+              chmod 600 .env
+            fi
+
             export IMAGE_NAME=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
             export IMAGE_TAG=latest
 
