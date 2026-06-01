@@ -13,7 +13,7 @@ RUN pnpm install --frozen-lockfile --offline --prod=false
 
 COPY . .
 
-RUN pnpm build
+RUN pnpm build && cp -r database dist/database
 
 # ---- production ----
 FROM node:22-alpine
@@ -29,7 +29,6 @@ COPY package.json ./
 RUN pnpm install --frozen-lockfile --offline --prod --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/database ./database
 COPY docker-entrypoint.sh ./
 
 RUN chmod +x docker-entrypoint.sh
