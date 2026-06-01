@@ -1,330 +1,243 @@
 # 部署文档
 
-本文档详细说明了博客后端系统的部署流程和配置说明。
+本文档详细说明博客后端系统基于 Docker + GitHub CI/CD 的生产环境部署流程。
+
+## 架构概述
+
+```
+推送代码到 GitHub main 分支
+     │
+     ▼
+GitHub Actions
+  ├─ CI: lint → test → build（代码质量门禁）
+  └─ Deploy: SSH 到服务器
+       ├─ git pull（拉取最新代码）
+       ├─ docker compose up -d --build（本地构建镜像 + 启动容器）
+       │     ├─ 复用 Docker 层缓存，只重新编译变更代码
+       │     └─ MySQL / 依赖层不变则秒级跳过
+       └─ 容器启动 → 等 MySQL → 跑迁移 → seed → 启动
+```
+
+> 不需要推送到任何 Docker 注册表，也不需要服务器拉取镜像。服务器本地根据 Dockerfile 直接构建，层缓存命中后每次只编译增量代码。
 
 ## 目录
 
 - [环境要求](#环境要求)
-- [开发环境部署](#开发环境部署)
-- [生产环境部署](#生产环境部署)
-- [Docker 部署](#docker-部署)
-- [环境变量配置](#环境变量配置)
-- [数据库迁移](#数据库迁移)
-- [Nginx 配置](#nginx-配置)
-- [监控与维护](#监控与维护)
+- [服务器初始化](#服务器初始化)
+- [GitHub 配置](#github-配置)
+- [首次部署](#首次部署)
+- [Nginx 反向代理与 SSL](#nginx-反向代理与-ssl)
+- [日常运维](#日常运维)
 - [故障排查](#故障排查)
+
+---
 
 ## 环境要求
 
-### 系统要求
+### 服务器
 
-- **操作系统**: Linux (Ubuntu 20.04+ / CentOS 7+) / Windows Server / macOS
-- **Node.js**: >= 16.x (推荐使用 LTS 版本)
-- **MySQL**: >= 8.0
-- **内存**: >= 2GB (推荐 4GB+)
-- **磁盘空间**: >= 10GB
+| 项目       | 要求                        |
+| ---------- | --------------------------- |
+| 操作系统   | Ubuntu 22.04 LTS            |
+| CPU / 内存 | 2 核 2 GB（最低）           |
+| 磁盘       | 20 GB+                      |
+| 公网 IP    | 已分配                      |
+| 安全组     | 开放 22、80、443、3004 端口 |
+| 软件       | 仅需安装 Docker             |
 
-### 软件依赖
+### 本地
 
-- **npm**: >= 7.x 或 **pnpm**: >= 8.x
-- **Git**: 用于代码版本控制
-- **PM2**: 用于进程管理（生产环境推荐）
+- Git
+- GitHub 仓库的 push 权限
 
-## 开发环境部署
+---
 
-### 1. 克隆项目
+## 服务器初始化
 
-```bash
-git clone <repository-url>
-cd Blog-project/server
-```
+以下操作在服务器上执行，只需做一次。
 
-### 2. 安装依赖
-
-```bash
-# 使用 npm
-npm install
-
-# 或使用 pnpm（推荐）
-pnpm install
-```
-
-### 3. 配置环境变量
-
-复制环境变量示例文件：
+### 1. 安装 Docker
 
 ```bash
-cp .env.example .env
+curl -fsSL https://get.docker.com | bash
+
+# 验证
+docker --version
 ```
 
-编辑 `.env` 文件，配置开发环境参数：
-
-```env
-# 数据库配置
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=your_password
-DB_DATABASE=blog_db
-DB_SYNCHRONIZE=true
-DB_LOGGING=all
-
-# 应用配置
-PORT=3004
-NODE_ENV=development
-
-# JWT 配置
-JWT_SECRET=your_development_jwt_secret
-JWT_EXPIRES_IN=7d
-
-# OSS 配置（可选，开发环境可以不配置）
-OSS_REGION=your_region
-OSS_ACCESS_KEY_ID=your_access_key_id
-OSS_ACCESS_KEY_SECRET=your_access_key_secret
-OSS_BUCKET=your_bucket
-OSS_ENDPOINT=your_endpoint
-OSS_PUBLIC_BASE_URL=your_public_base_url
-```
-
-### 4. 创建数据库
+### 2. 配置 Docker 镜像加速（国内服务器必须）
 
 ```bash
-# 登录 MySQL
-mysql -u root -p
-
-# 创建数据库
-CREATE DATABASE blog_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-# 退出
-exit;
+sudo mkdir -p /etc/docker
+echo '{"registry-mirrors": ["https://docker.m.daocloud.io"]}' | sudo tee /etc/docker/daemon.json
+sudo systemctl restart docker
 ```
 
-### 5. 运行数据库迁移
-
-```bash
-npm run migration:run
-```
-
-### 6. 启动开发服务器
-
-```bash
-npm run start:dev
-```
-
-应用将在 `http://localhost:3004` 启动。
-
-### 7. 验证部署
-
-访问以下地址验证部署：
-
-- API 根路径: `http://localhost:3004/api`
-- 健康检查: `http://localhost:3004/api` (如果已配置)
-
-## 生产环境部署
-
-### 1. 服务器准备
-
-#### 1.1 更新系统
-
-```bash
-# Ubuntu/Debian
-sudo apt update && sudo apt upgrade -y
-
-# CentOS/RHEL
-sudo yum update -y
-```
-
-#### 1.2 安装 Node.js
-
-使用 NodeSource 安装 Node.js LTS 版本：
-
-```bash
-# Ubuntu/Debian
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-sudo apt-get install -y nodejs
-
-# CentOS/RHEL
-curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -
-sudo yum install -y nodejs
-
-# 验证安装
-node --version
-npm --version
-```
-
-#### 1.3 安装 MySQL
-
-```bash
-# Ubuntu/Debian
-sudo apt install mysql-server -y
-sudo systemctl start mysql
-sudo systemctl enable mysql
-
-# CentOS/RHEL
-sudo yum install mysql-server -y
-sudo systemctl start mysqld
-sudo systemctl enable mysqld
-
-# 安全配置
-sudo mysql_secure_installation
-```
-
-#### 1.4 安装 PM2（进程管理）
-
-```bash
-sudo npm install -g pm2
-```
-
-### 2. 部署应用
-
-#### 2.1 克隆项目
+### 3. 克隆仓库
 
 ```bash
 cd /var/www
-sudo git clone <repository-url> blog-server
-cd blog-server/server
+git clone https://github.com/ljt741212/blog-server.git blog-server
+cd blog-server
 ```
 
-#### 2.2 安装依赖
+### 4. 生成部署专用 SSH 密钥
 
 ```bash
-sudo npm install --production
-# 或
-sudo pnpm install --production
+ssh-keygen -t rsa -b 4096 -C "github-actions" -f ~/.ssh/github_actions_rsa -N ""
+cat ~/.ssh/github_actions_rsa.pub >> ~/.ssh/authorized_keys
 ```
 
-#### 2.3 配置环境变量
+**重要** — 将密钥转为 PEM 格式（兼容 GitHub Actions）：
 
 ```bash
-sudo cp .env.example .env
-sudo nano .env
+ssh-keygen -p -m PEM -f ~/.ssh/github_actions_rsa
+cat ~/.ssh/github_actions_rsa
 ```
 
-生产环境配置示例：
+复制输出的整段内容（`-----BEGIN RSA PRIVATE KEY-----` 到 `-----END RSA PRIVATE KEY-----`），作为下一步的 `SSH_KEY`。
 
-```env
-# 数据库配置
-DB_HOST=127.0.0.1
+### 5. 确认 SSH 权限
+
+```bash
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
+---
+
+## GitHub 配置
+
+在 GitHub 仓库 **Settings → Secrets and variables → Actions** 中添加以下 Secrets：
+
+| Secret Name   | 值                        | 说明                   |
+| ------------- | ------------------------- | ---------------------- |
+| `SSH_HOST`    | `175.178.156.57`          | 服务器公网 IP          |
+| `SSH_USER`    | `root`                    | SSH 用户名             |
+| `SSH_KEY`     | （上一步 cat 输出的私钥） | 完整粘贴，含开头结尾行 |
+| `SSH_PORT`    | `22`                      | SSH 端口               |
+| `DEPLOY_PATH` | `/var/www/blog-server`    | 项目在服务器上的路径   |
+| `ENV_FILE`    | （base64 编码的 .env）    | 生产环境变量（见下方） |
+
+### 生成 ENV_FILE
+
+在本地，将 `.env.example` 复制为 `.env`，按以下模板填入真实值：
+
+```
+DB_HOST=mysql
 DB_PORT=3306
-DB_USERNAME=blog_user
-DB_PASSWORD=strong_password_here
+DB_USERNAME=root
+DB_PASSWORD=你的数据库密码
 DB_DATABASE=blog_db
 DB_SYNCHRONIZE=false
 DB_LOGGING=error
 
-# 应用配置
+JWT_SECRET=openssl rand -hex 64 生成的随机字符串
 PORT=3004
 NODE_ENV=production
+CORS_ORIGIN=http://www.cx330.cloud
 
-# JWT 配置（使用强密钥）
-JWT_SECRET=your_very_strong_jwt_secret_key_here
-JWT_EXPIRES_IN=7d
+EMAIL_HOST=smtp.qq.com
+EMAIL_PORT=465
+EMAIL_SECURE=true
+EMAIL_USER=你的邮箱@qq.com
+EMAIL_PASS=你的SMTP授权码
+EMAIL_FROM=你的邮箱@qq.com
 
-# OSS 配置
-OSS_REGION=oss-cn-hangzhou
-OSS_ACCESS_KEY_ID=your_access_key_id
-OSS_ACCESS_KEY_SECRET=your_access_key_secret
-OSS_BUCKET=your_bucket_name
-OSS_ENDPOINT=https://oss-cn-hangzhou.aliyuncs.com
-OSS_PUBLIC_BASE_URL=https://your-cdn-domain.com
-OSS_DEFAULT_DIR=uploads
-OSS_SIGN_EXPIRES=600
-OSS_MAX_FILE_SIZE_MB=10
-OSS_ALLOWED_MIME_PREFIXES=image/
+SEED_ADMIN_USERNAME=admin
+SEED_ADMIN_EMAIL=你的邮箱
+SEED_ADMIN_PASSWORD=你的管理员密码
+
+OSS_REGION=oss-cn-beijing
+OSS_ACCESS_KEY_ID=你的阿里云AK
+OSS_ACCESS_KEY_SECRET=你的阿里云SK
+OSS_BUCKET=你的OSS Bucket
 ```
 
-**重要提示**:
-- `DB_SYNCHRONIZE` 必须设置为 `false`
-- `JWT_SECRET` 必须使用强密钥
-- 数据库密码必须足够复杂
+**注意**: `DB_HOST` 必须写 `mysql`（Docker 内部网络的服务名），不能写 `127.0.0.1`。
 
-#### 2.4 创建数据库和用户
+在 **PowerShell** 中执行编码：
+
+```powershell
+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content .env -Raw)))
+```
+
+将输出的字符串填入 `ENV_FILE` Secret。
+
+### 开启仓库 Packages 权限
+
+**Settings → Actions → General → Workflow permissions** → 选择 **Read and write permissions** → Save。
+
+---
+
+## 首次部署
+
+### 1. 合并代码到 main
 
 ```bash
-sudo mysql -u root -p
+git checkout main
+git merge feature/v1.0/ljt
+git push origin main
 ```
 
-```sql
--- 创建数据库
-CREATE DATABASE blog_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+### 2. 观察 CI/CD 运行
 
--- 创建用户
-CREATE USER 'blog_user'@'localhost' IDENTIFIED BY 'strong_password_here';
+打开 GitHub 仓库 **Actions** 页，查看流水线执行状态。
 
--- 授权
-GRANT ALL PRIVILEGES ON blog_db.* TO 'blog_user'@'localhost';
-FLUSH PRIVILEGES;
+### 3. CI/CD 自动执行的步骤
 
--- 退出
-EXIT;
-```
+CI 阶段（GitHub Actions 上）：
 
-#### 2.5 构建项目
+- `pnpm install` + lint + test + build（代码质量门禁）
+
+部署阶段（服务器上）：
+
+- `git pull` 拉取最新代码
+- `docker compose up -d --build` 本地构建镜像并启动
+- 首次：从 Secret 解码写入 `.env` 文件
+- 首次：拉取 `mysql:8.0` 和 `node:22-alpine` 基础镜像（走 DaoCloud 加速）
+- App entrypoint 自动等 MySQL → 跑迁移 → seed 管理员 → 启动服务
+
+### 4. 验证
 
 ```bash
-npm run build
-```
-
-#### 2.6 运行数据库迁移
-
-```bash
-npm run migration:run
-```
-
-#### 2.7 使用 PM2 启动应用
-
-```bash
-# 启动应用
-pm2 start dist/main.js --name blog-server
-
-# 设置开机自启
-pm2 startup
-pm2 save
-
-# 查看状态
-pm2 status
+# 在服务器上检查容器状态
+docker compose -f /var/www/blog-server/docker-compose.yml ps
 
 # 查看日志
-pm2 logs blog-server
+docker logs -f blog-server
+
+# 测试接口
+curl http://localhost:3004/api/health
 ```
 
-### 3. 配置 Nginx 反向代理
+返回 `{"status":"ok","timestamp":...}` 即部署成功。
 
-#### 3.1 安装 Nginx
+---
+
+## Nginx 反向代理与 SSL
+
+应用运行在 `3004` 端口，需要 Nginx 反代到 80/443 端口并配置 SSL。
+
+### 1. 安装 Nginx
 
 ```bash
-# Ubuntu/Debian
 sudo apt install nginx -y
-
-# CentOS/RHEL
-sudo yum install nginx -y
-
-# 启动并设置开机自启
-sudo systemctl start nginx
-sudo systemctl enable nginx
 ```
 
-#### 3.2 配置 Nginx
-
-创建配置文件：
+### 2. 配置
 
 ```bash
-sudo nano /etc/nginx/sites-available/blog-server
+sudo vim /etc/nginx/sites-available/blog-server
 ```
-
-配置内容：
 
 ```nginx
 server {
     listen 80;
-    server_name your-domain.com;
+    server_name www.cx330.cloud cx330.cloud;
 
-    # 重定向到 HTTPS（如果使用 SSL）
-    # return 301 https://$server_name$request_uri;
-
-    # 如果暂时不使用 HTTPS，直接代理到后端
-    location /api {
-        proxy_pass http://localhost:3004;
+    location / {
+        proxy_pass http://127.0.0.1:3004;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -333,489 +246,157 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
-        
-        # 超时设置
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
 
-    # 静态文件（如果有）
-    location / {
-        root /var/www/blog-server/client/dist;
-        try_files $uri $uri/ /index.html;
+        # 上传文件大小限制
+        client_max_body_size 50m;
     }
 }
 ```
 
-启用配置：
+### 3. 启用并重载
 
 ```bash
-# Ubuntu/Debian
 sudo ln -s /etc/nginx/sites-available/blog-server /etc/nginx/sites-enabled/
-
-# CentOS/RHEL（配置文件路径可能不同）
-sudo cp /etc/nginx/sites-available/blog-server /etc/nginx/conf.d/blog-server.conf
-```
-
-测试配置：
-
-```bash
-sudo nginx -t
-```
-
-重启 Nginx：
-
-```bash
+sudo rm -f /etc/nginx/sites-enabled/default    # 删除默认站点
+sudo nginx -t                                    # 测试配置
 sudo systemctl restart nginx
 ```
 
-#### 3.3 配置 SSL（可选但推荐）
-
-使用 Let's Encrypt 免费 SSL 证书：
+### 4. 配置 SSL（Let's Encrypt）
 
 ```bash
-# 安装 Certbot
 sudo apt install certbot python3-certbot-nginx -y
-
-# 获取证书
-sudo certbot --nginx -d your-domain.com
-
-# 自动续期测试
-sudo certbot renew --dry-run
+sudo certbot --nginx -d www.cx330.cloud
+sudo certbot renew --dry-run   # 验证自动续期
 ```
 
-## Docker 部署
+完成后 Nginx 配置会自动加上 SSL。
 
-### 1. 创建 Dockerfile
+**安全组记得开放 80 和 443 端口。**
 
-在项目根目录创建 `Dockerfile`：
+---
 
-```dockerfile
-FROM node:18-alpine AS builder
+## 日常运维
 
-WORKDIR /app
+### 更新部署
 
-# 复制 package 文件
-COPY package*.json ./
-COPY pnpm-lock.yaml ./
-
-# 安装依赖
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
-
-# 复制源代码
-COPY . .
-
-# 构建项目
-RUN pnpm run build
-
-# 生产镜像
-FROM node:18-alpine
-
-WORKDIR /app
-
-# 复制 package 文件
-COPY package*.json ./
-COPY pnpm-lock.yaml ./
-
-# 安装生产依赖
-RUN npm install -g pnpm && pnpm install --production --frozen-lockfile
-
-# 复制构建产物
-COPY --from=builder /app/dist ./dist
-
-# 暴露端口
-EXPOSE 3004
-
-# 启动应用
-CMD ["node", "dist/main.js"]
-```
-
-### 2. 创建 .dockerignore
-
-```
-node_modules
-dist
-.env
-.env.local
-.git
-.gitignore
-README.md
-docs
-test
-coverage
-*.log
-```
-
-### 3. 创建 docker-compose.yml
-
-```yaml
-version: '3.8'
-
-services:
-  app:
-    build: .
-    container_name: blog-server
-    ports:
-      - "3004:3004"
-    environment:
-      - NODE_ENV=production
-      - DB_HOST=db
-      - DB_PORT=3306
-      - DB_USERNAME=blog_user
-      - DB_PASSWORD=${DB_PASSWORD}
-      - DB_DATABASE=blog_db
-      - DB_SYNCHRONIZE=false
-      - JWT_SECRET=${JWT_SECRET}
-      - OSS_ACCESS_KEY_ID=${OSS_ACCESS_KEY_ID}
-      - OSS_ACCESS_KEY_SECRET=${OSS_ACCESS_KEY_SECRET}
-      - OSS_BUCKET=${OSS_BUCKET}
-    depends_on:
-      - db
-    restart: unless-stopped
-    volumes:
-      - ./logs:/app/logs
-
-  db:
-    image: mysql:8.0
-    container_name: blog-db
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=blog_db
-      - MYSQL_USER=blog_user
-      - MYSQL_PASSWORD=${DB_PASSWORD}
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    restart: unless-stopped
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-
-volumes:
-  db_data:
-```
-
-### 4. 构建和运行
+修改代码后：
 
 ```bash
-# 创建环境变量文件
-cp .env.example .env
-# 编辑 .env 文件
-
-# 构建镜像
-docker-compose build
-
-# 启动服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f app
-
-# 运行数据库迁移
-docker-compose exec app npm run migration:run
+git add .
+git commit -m "feat: xxx"
+git push origin main
 ```
 
-## 环境变量配置
+CI/CD 全自动完成。无需登录服务器。
 
-### 必需配置
-
-| 变量名 | 说明 | 示例 |
-|--------|------|------|
-| `DB_HOST` | 数据库主机 | `127.0.0.1` |
-| `DB_PORT` | 数据库端口 | `3306` |
-| `DB_USERNAME` | 数据库用户名 | `blog_user` |
-| `DB_PASSWORD` | 数据库密码 | `strong_password` |
-| `DB_DATABASE` | 数据库名称 | `blog_db` |
-| `DB_SYNCHRONIZE` | 是否自动同步（生产环境必须 false） | `false` |
-| `PORT` | 应用端口 | `3004` |
-| `NODE_ENV` | 环境模式 | `production` |
-| `JWT_SECRET` | JWT 密钥 | `your_secret_key` |
-
-### 可选配置
-
-| 变量名 | 说明 | 默认值 |
-|--------|------|--------|
-| `DB_LOGGING` | 数据库日志级别 | `error` |
-| `JWT_EXPIRES_IN` | JWT 过期时间 | `7d` |
-| `OSS_REGION` | OSS 区域 | - |
-| `OSS_ACCESS_KEY_ID` | OSS Access Key ID | - |
-| `OSS_ACCESS_KEY_SECRET` | OSS Access Key Secret | - |
-| `OSS_BUCKET` | OSS 存储桶名称 | - |
-| `OSS_ENDPOINT` | OSS 端点 | - |
-| `OSS_PUBLIC_BASE_URL` | OSS 公共访问 URL | - |
-
-## 数据库迁移
-
-### 运行迁移
+### 查看日志
 
 ```bash
-# 开发环境
-npm run migration:run
+# 实时日志
+docker logs -f blog-server
 
-# 生产环境（确保已构建）
-npm run build
-npm run migration:run
+# 最近 100 行
+docker logs --tail 100 blog-server
 ```
 
-### 回滚迁移
+### 重启服务
 
 ```bash
-npm run migration:revert
+cd /var/www/blog-server
+docker compose restart app
 ```
 
-### 创建新迁移
+### 数据库备份
 
 ```bash
-# 创建空迁移文件
-npm run migration:create ./src/migrations/your-migration-name
+# 备份
+docker exec blog-mysql mysqldump -u root -p blog_db > backup_$(date +%Y%m%d).sql
 
-# 根据实体变更生成迁移
-npm run migration:generate ./src/migrations/update-table
+# 恢复
+docker exec -i blog-mysql mysql -u root -p blog_db < backup.sql
 ```
 
-## Nginx 配置
-
-### 基本配置
-
-参考 [配置 Nginx 反向代理](#32-配置-nginx) 部分。
-
-### 性能优化
-
-```nginx
-# 启用 gzip 压缩
-gzip on;
-gzip_vary on;
-gzip_min_length 1024;
-gzip_types text/plain text/css text/xml text/javascript application/json application/javascript application/xml+rss;
-
-# 缓存静态资源
-location ~* \.(jpg|jpeg|png|gif|ico|css|js)$ {
-    expires 1y;
-    add_header Cache-Control "public, immutable";
-}
-```
-
-### 安全配置
-
-```nginx
-# 隐藏 Nginx 版本
-server_tokens off;
-
-# 安全头
-add_header X-Frame-Options "SAMEORIGIN" always;
-add_header X-Content-Type-Options "nosniff" always;
-add_header X-XSS-Protection "1; mode=block" always;
-```
-
-## 监控与维护
-
-### PM2 监控
-
-```bash
-# 查看应用状态
-pm2 status
-
-# 查看详细信息
-pm2 show blog-server
-
-# 查看日志
-pm2 logs blog-server --lines 100
-
-# 监控面板
-pm2 monit
-
-# 重启应用
-pm2 restart blog-server
-
-# 停止应用
-pm2 stop blog-server
-```
-
-### 日志管理
-
-应用日志位置：
-- PM2 日志: `~/.pm2/logs/`
-- 应用日志: 根据配置（如 `/var/www/blog-server/logs/`）
-
-日志轮转配置（使用 PM2 模块）：
-
-```bash
-# 安装 PM2 日志轮转模块
-pm2 install pm2-logrotate
-
-# 配置日志轮转
-pm2 set pm2-logrotate:max_size 10M
-pm2 set pm2-logrotate:retain 7
-```
-
-### 备份策略
-
-#### 数据库备份
-
-```bash
-# 创建备份脚本
-sudo nano /usr/local/bin/backup-db.sh
-```
-
-```bash
-#!/bin/bash
-BACKUP_DIR="/backup/database"
-DATE=$(date +%Y%m%d_%H%M%S)
-DB_NAME="blog_db"
-DB_USER="blog_user"
-DB_PASS="your_password"
-
-mkdir -p $BACKUP_DIR
-mysqldump -u $DB_USER -p$DB_PASS $DB_NAME > $BACKUP_DIR/backup_$DATE.sql
-
-# 删除 7 天前的备份
-find $BACKUP_DIR -name "backup_*.sql" -mtime +7 -delete
-```
-
-设置执行权限：
-
-```bash
-sudo chmod +x /usr/local/bin/backup-db.sh
-```
-
-添加到 crontab（每天凌晨 2 点备份）：
+建议加 crontab 自动备份：
 
 ```bash
 sudo crontab -e
-# 添加以下行
-0 2 * * * /usr/local/bin/backup-db.sh
+
+# 每天凌晨 3 点备份
+0 3 * * * docker exec blog-mysql mysqldump -u root -p你的密码 blog_db > /var/backups/blog_$(date +\%Y\%m\%d).sql
 ```
+
+### 手动跑迁移
+
+```bash
+docker exec blog-server node ./node_modules/typeorm/cli.js migration:run -d ./dist/config/data-source.js
+```
+
+### 容器状态
+
+```bash
+cd /var/www/blog-server
+docker compose ps
+```
+
+---
+
+## 自动化清单
+
+以下步骤由 Docker + CI/CD 自动完成，**无需手动操作**：
+
+- [x] 安装 Node.js 环境 → 容器内置
+- [x] 安装 MySQL 数据库 → Docker Compose 启动
+- [x] 创建数据库 → MySQL 容器 `MYSQL_DATABASE` 环境变量
+- [x] 建表 → entrypoint 自动跑 TypeORM 迁移
+- [x] 创建管理员 → entrypoint 自动跑 seed 脚本
+- [x] 安装 pnpm 依赖 → Docker 多阶段构建
+- [x] 编译 TypeScript → Docker build 阶段
+- [x] 进程管理（崩溃重启） → Docker `restart: always`
+- [x] 代码更新部署 → GitHub Actions push 触发
+
+---
+
+## 项目文件说明
+
+| 文件                          | 用途                                                  |
+| ----------------------------- | ----------------------------------------------------- |
+| `Dockerfile`                  | 多阶段构建：builder 编译 TS → production 仅含生产依赖 |
+| `docker-compose.yml`          | app + MySQL 8.0 编排，健康检查，数据卷持久化          |
+| `docker-entrypoint.sh`        | 容器启动脚本：等 MySQL → 跑迁移 → seed → 启动应用     |
+| `.dockerignore`               | 排除 node_modules、dist、.git 等不必要文件            |
+| `.github/workflows/ci-cd.yml` | CI/CD 流水线定义                                      |
+
+---
 
 ## 故障排查
 
-### 常见问题
+### CI Build 阶段失败
 
-#### 1. 应用无法启动
+**Docker Hub 超时**: `dial tcp ... i/o timeout`
 
-**检查项**:
-- 检查端口是否被占用: `lsof -i :3004`
-- 检查环境变量配置是否正确
-- 查看应用日志: `pm2 logs blog-server`
+→ 检查镜像加速是否生效。必要时更换镜像源。
 
-#### 2. 数据库连接失败
+**pnpm install 失败**: 某个包下载超时
 
-**检查项**:
-- 确认数据库服务是否运行: `sudo systemctl status mysql`
-- 检查数据库配置是否正确
-- 检查数据库用户权限
-- 检查防火墙设置
+→ 重试一次。`pnpm fetch` 对网络稳定性要求高。
 
-#### 3. 502 Bad Gateway
+### Deploy 阶段失败
 
-**检查项**:
-- 确认后端应用是否运行: `pm2 status`
-- 检查 Nginx 配置中的 proxy_pass 地址
-- 查看 Nginx 错误日志: `sudo tail -f /var/log/nginx/error.log`
+**SSH 连接失败**: `handshake failed: ssh: unable to authenticate`
 
-#### 4. 内存占用过高
+→ 检查 `SSH_KEY` 是否为 PEM 格式（`-----BEGIN RSA PRIVATE KEY-----` 开头），以及 `authorized_keys` 是否包含对应公钥。
 
-**解决方案**:
-- 检查是否有内存泄漏
-- 使用 PM2 限制内存: `pm2 start dist/main.js --max-memory-restart 500M`
-- 优化数据库查询
-- 启用 Node.js 垃圾回收优化
+**ENV_FILE base64 解码失败**: `base64: invalid input`
 
-#### 5. 迁移失败
+→ 重新在 PowerShell 中执行 `[Convert]::ToBase64String(...)` 编码，更新 Secret 值。
 
-**检查项**:
-- 确认数据库连接正常
-- 检查迁移文件语法
-- 查看迁移日志
-- 手动执行 SQL 检查
+**MySQL 容器无法启动**:
 
-### 日志查看
+→ 查看日志：`docker logs blog-mysql`。常见原因：数据卷权限问题，或密码不符合 MySQL 策略。
 
-```bash
-# PM2 日志
-pm2 logs blog-server
+### 应用启动后 502
 
-# Nginx 访问日志
-sudo tail -f /var/log/nginx/access.log
-
-# Nginx 错误日志
-sudo tail -f /var/log/nginx/error.log
-
-# MySQL 日志
-sudo tail -f /var/log/mysql/error.log
-```
-
-### 性能分析
-
-```bash
-# 使用 Node.js 性能分析
-node --prof dist/main.js
-
-# 使用 PM2 性能监控
-pm2 monit
-```
-
-## 更新部署
-
-### 更新流程
-
-1. **备份数据库**
-```bash
-/usr/local/bin/backup-db.sh
-```
-
-2. **拉取最新代码**
-```bash
-cd /var/www/blog-server/server
-git pull origin main
-```
-
-3. **安装依赖**
-```bash
-npm install --production
-```
-
-4. **运行数据库迁移**
-```bash
-npm run build
-npm run migration:run
-```
-
-5. **重新构建**
-```bash
-npm run build
-```
-
-6. **重启应用**
-```bash
-pm2 restart blog-server
-```
-
-7. **验证部署**
-```bash
-curl http://localhost:3004/api
-```
-
-## 安全建议
-
-1. **定期更新系统和依赖**
-2. **使用强密码**
-3. **配置防火墙**
-4. **启用 HTTPS**
-5. **限制数据库访问**
-6. **定期备份数据**
-7. **监控异常访问**
-8. **使用环境变量存储敏感信息**
-9. **定期审查日志**
-10. **实施访问控制**
-
-## 性能优化建议
-
-1. **启用数据库索引**
-2. **使用 Redis 缓存（如需要）**
-3. **启用 Nginx 缓存**
-4. **使用 CDN 加速静态资源**
-5. **优化数据库查询**
-6. **启用 HTTP/2**
-7. **使用连接池**
-8. **实施限流策略**
+→ 检查容器是否在运行：`docker ps | grep blog-server`
+→ 查看应用日志：`docker logs blog-server`
+→ 检查 Nginx 配置中 proxy_pass 指向 `127.0.0.1:3004`
