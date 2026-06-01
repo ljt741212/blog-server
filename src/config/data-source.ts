@@ -17,7 +17,6 @@ if (existsSync(envDevPath)) {
   config({ path: envDevPath });
 }
 
-const currentScript = process.env.npm_lifecycle_event;
 const isCompiled = __filename.endsWith('.js');
 const entitiesPath = isCompiled
   ? 'dist/modules/**/*.entity.js'
@@ -38,7 +37,7 @@ export default new DataSource({
   database: process.env.DB_DATABASE || 'blog_db',
   synchronize: false,
   logging: true,
-  multipleStatements: currentScript === 'typeorm',
+  multipleStatements: true,
   entities: [entitiesPath],
   migrations: [migrationsPath],
   subscribers: [subscribersPath],
