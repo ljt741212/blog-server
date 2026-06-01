@@ -7,8 +7,6 @@ import { env, envBoolean, envNumber } from '@/global/env';
 dotenv.config({ path: `.env.${process.env.NODE_ENV || 'development'}` });
 dotenv.config({ path: '.env' });
 
-const currentScript = process.env.npm_lifecycle_event;
-
 const dataSourceOptions: DataSourceOptions = {
   type: 'mysql',
   host: env('DB_HOST', '127.0.0.1'),
@@ -17,9 +15,7 @@ const dataSourceOptions: DataSourceOptions = {
   password: env('DB_PASSWORD'),
   database: env('DB_DATABASE', 'blog_db'),
   synchronize: envBoolean('DB_SYNCHRONIZE', false),
-  multipleStatements:
-    currentScript === 'typeorm' ||
-    process.env.npm_lifecycle_event === 'typeorm',
+  multipleStatements: true,
   entities: ['dist/modules/**/*.entity{.ts,.js}'],
   migrations: ['dist/migrations/*{.ts,.js}'],
   subscribers: ['dist/**/*.subscriber{.ts,.js}'],
