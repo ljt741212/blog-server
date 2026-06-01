@@ -26,7 +26,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm fetch --prod
 
 COPY package.json ./
-RUN pnpm install --frozen-lockfile --offline --prod
+RUN pnpm install --frozen-lockfile --offline --prod --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
 COPY docker-entrypoint.sh ./
