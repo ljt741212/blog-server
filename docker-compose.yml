@@ -1,6 +1,5 @@
 services:
   app:
-    image: ${IMAGE_NAME:-blog-server}:${IMAGE_TAG:-latest}
     build: .
     container_name: blog-server
     ports:

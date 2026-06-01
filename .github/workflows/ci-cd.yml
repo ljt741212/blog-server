@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [main, master]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
-
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -38,42 +34,11 @@ jobs:
 
       - run: pnpm build
 
-  build-and-deploy:
+  deploy:
     needs: ci
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker mirror
-        run: |
-          sudo mkdir -p /etc/docker
-          echo '{"registry-mirrors": ["https://docker.m.daocloud.io"]}' | sudo tee /etc/docker/daemon.json
-          sudo systemctl restart docker
-
-      - name: Build Docker image
-        run: |
-          docker build \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-            .
-
-      - name: Push Docker image
-        run: |
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
@@ -84,9 +49,10 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
             cd ${{ secrets.DEPLOY_PATH }}
+
+            echo ">>> pulling latest code..."
+            git pull origin main
 
             if [ ! -f .env ]; then
               echo ">>> creating .env from secret..."
@@ -94,9 +60,6 @@ jobs:
               chmod 600 .env
             fi
 
-            export IMAGE_NAME=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-            export IMAGE_TAG=latest
-
-            docker compose pull app
-            docker compose up -d --remove-orphans
+            echo ">>> building and deploying..."
+            docker compose up -d --build --remove-orphans
             docker image prune -f

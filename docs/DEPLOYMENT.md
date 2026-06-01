@@ -10,19 +10,15 @@
      ▼
 GitHub Actions
   ├─ CI: lint → test → build（代码质量门禁）
-  └─ Build & Deploy:
-       ├─ 构建 Docker 镜像（多阶段构建）
-       ├─ 推送到 ghcr.io（GitHub Container Registry）
-       ├─ SSH 到服务器
-       └─ docker compose pull + up -d（更新容器）
-              │
-              ▼
-         服务器容器启动
-           ├─ 等待 MySQL 就绪
-           ├─ 自动运行 TypeORM 迁移
-           ├─ 自动 seed 初始管理员
-           └─ 启动 NestJS 应用
+  └─ Deploy: SSH 到服务器
+       ├─ git pull（拉取最新代码）
+       ├─ docker compose up -d --build（本地构建镜像 + 启动容器）
+       │     ├─ 复用 Docker 层缓存，只重新编译变更代码
+       │     └─ MySQL / 依赖层不变则秒级跳过
+       └─ 容器启动 → 等 MySQL → 跑迁移 → seed → 启动
 ```
+
+> 不需要推送到任何 Docker 注册表，也不需要服务器拉取镜像。服务器本地根据 Dockerfile 直接构建，层缓存命中后每次只编译增量代码。
 
 ## 目录
 
@@ -190,17 +186,16 @@ git push origin main
 
 ### 3. CI/CD 自动执行的步骤
 
-构建阶段（GitHub Actions 上）：
+CI 阶段（GitHub Actions 上）：
 
-- 拉取代码
-- `pnpm install` + lint + test + build（CI 门禁）
-- 构建 Docker 镜像并推送到 `ghcr.io/ljt741212/blog-server`
+- `pnpm install` + lint + test + build（代码质量门禁）
 
 部署阶段（服务器上）：
 
+- `git pull` 拉取最新代码
+- `docker compose up -d --build` 本地构建镜像并启动
 - 首次：从 Secret 解码写入 `.env` 文件
-- 拉取 app 镜像和 `mysql:8.0` 镜像
-- 启动 MySQL + App 容器
+- 首次：拉取 `mysql:8.0` 和 `node:22-alpine` 基础镜像（走 DaoCloud 加速）
 - App entrypoint 自动等 MySQL → 跑迁移 → seed 管理员 → 启动服务
 
 ### 4. 验证
