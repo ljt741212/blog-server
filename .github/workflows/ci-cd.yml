@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, master]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -29,34 +33,40 @@ jobs:
       - run: pnpm lint
         continue-on-error: true
 
+      - run: pnpm test
+        continue-on-error: true
+
       - run: pnpm build
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/
-          retention-days: 1
-
-  deploy:
+  build-and-deploy:
     needs: ci
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          version: latest
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: 'pnpm'
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
+            .
 
-      - run: pnpm install --frozen-lockfile --prod=false
-
-      - run: pnpm build
+      - name: Push Docker image
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
@@ -67,21 +77,13 @@ jobs:
           port: ${{ secrets.SSH_PORT || 22 }}
           script: |
             set -e
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
             cd ${{ secrets.DEPLOY_PATH }}
 
-            echo ">>> pulling latest code..."
-            git checkout ${{ github.ref_name }}
-            git pull origin ${{ github.ref_name }}
+            export IMAGE_NAME=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            export IMAGE_TAG=latest
 
-            echo ">>> installing dependencies..."
-            pnpm install --frozen-lockfile --prod=false
-
-            echo ">>> building..."
-            pnpm build
-
-            echo ">>> running migrations..."
-            pnpm migration:run || echo "no new migrations"
-
-            echo ">>> reloading pm2..."
-            pm2 reload ecosystem.config.js || pm2 start ecosystem.config.js
-            pm2 save
+            docker compose pull app
+            docker compose up -d --remove-orphans
+            docker image prune -f
