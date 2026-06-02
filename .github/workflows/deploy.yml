@@ -7,62 +7,38 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      packages: write
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and deploy
+        run: |
+          set -e
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/ljt741212/blog-server:latest
+          echo ">>> building image..."
+          docker build -t blog-server:latest .
 
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          command_timeout: 15m
-          script: |
-            set -e
+          cd /opt/blog-server
 
-            cd /opt/blog-server
+          echo ">>> restarting services..."
+          docker compose up -d --remove-orphans
 
-            echo ">>> pulling latest app image..."
-            docker compose pull app
+          echo ">>> waiting for app to be ready..."
+          sleep 15
 
-            echo ">>> restarting services..."
-            docker compose up -d --remove-orphans
+          echo ">>> running migrations..."
+          docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
 
-            echo ">>> waiting for app to be ready..."
-            sleep 15
+          echo ">>> seeding admin..."
+          docker compose exec -T app node dist/scripts/seed-admin.js || echo "  seed skipped (already seeded or error)"
 
-            echo ">>> running migrations..."
-            docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
+          echo ">>> cleaning up old images..."
+          docker image prune -f
 
-            echo ">>> seeding admin..."
-            docker compose exec -T app node dist/scripts/seed-admin.js || echo "  seed skipped (already seeded or error)"
+          echo ">>> container status:"
+          docker compose ps
 
-            echo ">>> cleaning up old images..."
-            docker image prune -f
-
-            echo ">>> container status:"
-            docker compose ps
-
-            echo ">>> recent logs:"
-            docker compose logs --tail 30
+          echo ">>> recent logs:"
+          docker compose logs --tail 30
