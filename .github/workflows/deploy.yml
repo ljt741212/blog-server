@@ -24,12 +24,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Tencent Cloud TCR
+        uses: docker/login-action@v3
+        with:
+          registry: ccr.ccs.tencentyun.com
+          username: ${{ secrets.TCR_USERNAME }}
+          password: ${{ secrets.TCR_PASSWORD }}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ghcr.io/ljt741212/blog-server:latest
+          tags: |
+            ghcr.io/ljt741212/blog-server:latest
+            ccr.ccs.tencentyun.com/blog/blog-server:latest
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
@@ -40,12 +49,11 @@ jobs:
           command_timeout: 15m
           script: |
             set -e
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             cd /opt/blog-server
 
-            echo ">>> pulling latest image..."
-            docker compose pull
+            echo ">>> pulling latest app image..."
+            docker compose pull app
 
             echo ">>> restarting services..."
             docker compose up -d --remove-orphans
