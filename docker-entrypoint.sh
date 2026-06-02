@@ -24,10 +24,10 @@ do
 done
 
 echo ">>> running migrations..."
-node ./node_modules/typeorm/cli.js migration:run -d ./dist/src/config/data-source.js
+node ./node_modules/typeorm/cli.js migration:run -d ./dist/config/data-source.js
 
 echo ">>> seeding initial data..."
-node dist/src/scripts/seed-admin.js || echo "  seed skipped"
+node dist/scripts/seed-admin.js || echo "  seed skipped"
 
 echo ">>> starting app..."
-exec node dist/src/main
+exec node dist/main
