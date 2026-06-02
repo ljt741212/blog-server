@@ -28,7 +28,7 @@ services:
       - blog_network
 
   app:
-    image: ghcr.io/ljt741212/blog-server:latest
+    image: ccr.ccs.tencentyun.com/blog/blog-server:latest
     container_name: blog-server
     restart: always
     ports:
