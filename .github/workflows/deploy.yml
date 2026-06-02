@@ -38,7 +38,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/ljt741212/blog-server:latest
-            ccr.ccs.tencentyun.com/blog/blog-server:latest
+            ccr.ccs.tencentyun.com/100030819714/blog-server:latest
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
