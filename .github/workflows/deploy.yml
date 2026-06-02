@@ -44,8 +44,8 @@ jobs:
 
             cd /opt/blog-server
 
-            echo ">>> pulling latest image..."
-            docker compose pull
+            echo ">>> pulling latest app image..."
+            docker compose pull app
 
             echo ">>> restarting services..."
             docker compose up -d --remove-orphans
