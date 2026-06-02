@@ -48,8 +48,24 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 15m
           script: |
+            set -e
             cd /opt/blog-server
-            git pull
+
+            echo ">>> fetching latest code..."
+            git fetch origin
+            git checkout main
+            git reset --hard origin/main
+
+            echo ">>> building and deploying..."
             docker compose up -d --build --remove-orphans
+
+            echo ">>> cleaning up old images..."
             docker image prune -f
+
+            echo ">>> container status:"
+            docker compose ps
+
+            echo ">>> recent logs:"
+            docker logs blog-server --tail 20
