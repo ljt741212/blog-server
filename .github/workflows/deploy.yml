@@ -1,0 +1,69 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/ljt741212/blog-server:latest
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: 15m
+          script: |
+            set -e
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            cd /opt/blog-server
+
+            echo ">>> pulling latest image..."
+            docker compose pull
+
+            echo ">>> restarting services..."
+            docker compose up -d --remove-orphans
+
+            echo ">>> waiting for app to be ready..."
+            sleep 15
+
+            echo ">>> running migrations..."
+            docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
+
+            echo ">>> seeding admin..."
+            docker compose exec -T app node dist/scripts/seed-admin.js || echo "  seed skipped (already seeded or error)"
+
+            echo ">>> cleaning up old images..."
+            docker image prune -f
+
+            echo ">>> container status:"
+            docker compose ps
+
+            echo ">>> recent logs:"
+            docker compose logs --tail 30
