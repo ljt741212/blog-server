@@ -39,6 +39,8 @@ jobs:
           tags: |
             ghcr.io/ljt741212/blog-server:latest
             ccr.ccs.tencentyun.com/blog-server/blog-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
