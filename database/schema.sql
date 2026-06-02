@@ -47,7 +47,7 @@ CREATE TABLE `visitors` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `visitor_id` varchar(64) DEFAULT NULL COMMENT '访客唯一ID（前端 localStorage 中的 visitorId）',
   `fingerprint` varchar(64) DEFAULT NULL COMMENT '访客指纹（旧字段，兼容用）',
-  `ip` varchar(50) NOT NULL COMMENT 'IP地址',
+  `ip` varchar(50) NULL COMMENT 'IP地址',
   `location` varchar(100) DEFAULT NULL COMMENT '位置',
   `user_agent` varchar(255) DEFAULT NULL COMMENT '用户代理',
   `last_active_at` datetime(6) DEFAULT NULL COMMENT '最后活跃时间（用于统计当前在线）',
@@ -55,7 +55,8 @@ CREATE TABLE `visitors` (
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
   PRIMARY KEY (`id`),
   UNIQUE KEY `IDX_visitors_ip` (`ip`),
-  UNIQUE KEY `IDX_visitors_visitor_id` (`visitor_id`)
+  UNIQUE KEY `IDX_visitors_visitor_id` (`visitor_id`),
+  UNIQUE KEY `IDX_visitors_fingerprint` (`fingerprint`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='访客表';
 
 -- ============================================
@@ -285,6 +286,31 @@ CREATE TABLE `guest_messages` (
   CONSTRAINT `FK_guest_messages_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `FK_guest_messages_visitor` FOREIGN KEY (`visitor_id`) REFERENCES `visitors` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='访客留言表';
+
+-- ============================================
+-- 15. 站点配置表 (site_config)
+-- ============================================
+DROP TABLE IF EXISTS `site_config`;
+CREATE TABLE `site_config` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `background_image` varchar(500) DEFAULT NULL COMMENT '背景图URL',
+  `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+  `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='站点配置表';
+
+-- ============================================
+-- 16. 邮箱验证码表 (email_codes)
+-- ============================================
+DROP TABLE IF EXISTS `email_codes`;
+CREATE TABLE `email_codes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `email` varchar(100) NOT NULL COMMENT '邮箱地址',
+  `code` varchar(10) NOT NULL COMMENT '验证码',
+  `used` tinyint(4) NOT NULL DEFAULT 0 COMMENT '0-未使用, 1-已使用',
+  `createdAt` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='邮箱验证码表';
 
 -- 恢复外键检查
 SET FOREIGN_KEY_CHECKS = 1;

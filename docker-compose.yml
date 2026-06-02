@@ -1,32 +1,71 @@
 services:
-  app:
-    build: .
-    container_name: blog-server
-    ports:
-      - "${PORT:-3004}:${PORT:-3004}"
-    env_file:
-      - .env
-    depends_on:
-      mysql:
-        condition: service_healthy
-    restart: always
-    volumes:
-      - ./logs:/app/logs
-
   mysql:
     image: mysql:8.0
     container_name: blog-mysql
+    restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_DATABASE:-blog_db}
     volumes:
       - mysql_data:/var/lib/mysql
-    restart: always
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "localhost",
+          "-u",
+          "root",
+          "-p${DB_PASSWORD}",
+        ]
+      interval: 10s
       timeout: 5s
-      retries: 12
+      retries: 10
+      start_period: 30s
+    networks:
+      - blog_network
+
+  app:
+    image: ghcr.io/ljt741212/blog-server:latest
+    container_name: blog-server
+    restart: always
+    ports:
+      - "3004:3004"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USERNAME: ${DB_USERNAME:-root}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE:-blog_db}
+      DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
+      DB_LOGGING: ${DB_LOGGING:-error}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PORT:-3004}
+      NODE_ENV: ${NODE_ENV:-production}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT:-465}
+      EMAIL_SECURE: ${EMAIL_SECURE:-true}
+      EMAIL_USER: ${EMAIL_USER}
+      EMAIL_PASS: ${EMAIL_PASS}
+      EMAIL_FROM: ${EMAIL_FROM}
+      OSS_REGION: ${OSS_REGION}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET}
+      OSS_BUCKET: ${OSS_BUCKET}
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - blog_network
 
 volumes:
   mysql_data:
+
+networks:
+  blog_network:
