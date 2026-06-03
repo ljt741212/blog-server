@@ -27,4 +27,4 @@ COPY --from=builder /app/database ./database
 
 EXPOSE 3004
 
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]
