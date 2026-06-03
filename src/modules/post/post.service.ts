@@ -6,7 +6,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
-import { paginateQueryBuilderForAdmin } from '@/common';
 import { Category } from '@/modules/category/category.entity';
 import { Tag } from '@/modules/tag/tag.entity';
 import { AuthUtil } from '@/shared/auth/auth.util';
@@ -27,6 +26,33 @@ export class PostService {
   ) {}
 
   async paginateForAdmin(query: PostPageQueryDto) {
+    const { current = 1, pageSize = 10 } = query || {};
+
+    // Count query: no LEFT JOIN to avoid cartesian-product inflate
+    const countQb = this.postRepository.createQueryBuilder('post');
+
+    if (query.searchValue) {
+      countQb.andWhere('(post.title LIKE :kw OR post.summary LIKE :kw)', {
+        kw: `%${query.searchValue}%`,
+      });
+    }
+    if (typeof query.status !== 'undefined') {
+      countQb.andWhere('post.status = :status', { status: query.status });
+    }
+    if (query.categoryId) {
+      countQb.andWhere('post.category_id = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+    if (query.tagId) {
+      countQb.innerJoin('post.tags', 'tagFilter', 'tagFilter.id = :tagId', {
+        tagId: query.tagId,
+      });
+    }
+
+    const total = await countQb.getCount();
+
+    // Data query: with JOINs for eager relations
     const qb = this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
@@ -38,17 +64,14 @@ export class PostService {
         kw: `%${query.searchValue}%`,
       });
     }
-
     if (typeof query.status !== 'undefined') {
       qb.andWhere('post.status = :status', { status: query.status });
     }
-
     if (query.categoryId) {
       qb.andWhere('post.category_id = :categoryId', {
         categoryId: query.categoryId,
       });
     }
-
     if (query.tagId) {
       qb.innerJoin('post.tags', 'tagFilter', 'tagFilter.id = :tagId', {
         tagId: query.tagId,
@@ -56,15 +79,43 @@ export class PostService {
     }
 
     qb.orderBy('post.createdAt', 'DESC');
-    const page = await paginateQueryBuilderForAdmin(qb, query);
+    qb.skip((current - 1) * pageSize).take(pageSize);
+
+    const items = await qb.getMany();
 
     return {
-      ...page,
-      items: page.items.map((p: Post) => this.buildAdminPost(p)),
+      items: items.map((p: Post) => this.buildAdminPost(p)),
+      meta: { total, current, pageSize },
     };
   }
 
   async findAll(query?: PostPageQueryDto) {
+    const { current = 1, pageSize = 10 } = query || {};
+
+    // Count query: no LEFT JOIN to avoid cartesian-product inflate
+    const countQb = this.postRepository
+      .createQueryBuilder('post')
+      .where('post.status = :status', { status: PostStatus.PUBLISHED });
+
+    if (query?.searchValue) {
+      countQb.andWhere('(post.title LIKE :kw OR post.summary LIKE :kw)', {
+        kw: `%${query.searchValue}%`,
+      });
+    }
+    if (query?.categoryId) {
+      countQb.andWhere('post.category_id = :categoryId', {
+        categoryId: query.categoryId,
+      });
+    }
+    if (query?.tagId) {
+      countQb.innerJoin('post.tags', 'tagFilter', 'tagFilter.id = :tagId', {
+        tagId: query.tagId,
+      });
+    }
+
+    const total = await countQb.getCount();
+
+    // Data query: with JOINs for eager relations
     const qb = this.postRepository
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.category', 'category')
@@ -77,13 +128,11 @@ export class PostService {
         kw: `%${query.searchValue}%`,
       });
     }
-
     if (query?.categoryId) {
       qb.andWhere('post.category_id = :categoryId', {
         categoryId: query.categoryId,
       });
     }
-
     if (query?.tagId) {
       qb.innerJoin('post.tags', 'tagFilter', 'tagFilter.id = :tagId', {
         tagId: query.tagId,
@@ -91,11 +140,13 @@ export class PostService {
     }
 
     qb.orderBy('post.isTop', 'DESC').addOrderBy('post.createdAt', 'DESC');
+    qb.skip((current - 1) * pageSize).take(pageSize);
 
-    const page = await paginateQueryBuilderForAdmin(qb, query || {});
+    const items = await qb.getMany();
+
     return {
-      ...page,
-      items: page.items.map((p: Post) => this.buildPublicPost(p)),
+      items: items.map((p: Post) => this.buildPublicPost(p)),
+      meta: { total, current, pageSize },
     };
   }
 
