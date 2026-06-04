@@ -40,7 +40,10 @@ export class TagService {
   }
 
   async findAll() {
-    return this.tagRepository.find({ order: { id: 'DESC' } });
+    return this.tagRepository.find({
+      where: { status: TagStatus.ENABLED },
+      order: { id: 'DESC' },
+    });
   }
 
   async findOne(id: number) {

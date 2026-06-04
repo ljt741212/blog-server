@@ -40,7 +40,10 @@ export class CategoryService {
   }
 
   async findAll() {
-    return this.categoryRepository.find({ order: { id: 'DESC' } });
+    return this.categoryRepository.find({
+      where: { status: CategoryStatus.ENABLED },
+      order: { id: 'DESC' },
+    });
   }
 
   async findOne(id: number) {
