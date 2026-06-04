@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
 import { Category } from '@/modules/category/category.entity';
+import { Comment } from '@/modules/comment/comment.entity';
 import { Tag } from '@/modules/tag/tag.entity';
 import { AuthUtil } from '@/shared/auth/auth.util';
 
@@ -22,6 +23,8 @@ export class PostService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Tag)
     private readonly tagRepository: Repository<Tag>,
+    @InjectRepository(Comment)
+    private readonly commentRepository: Repository<Comment>,
     private readonly authUtil: AuthUtil,
   ) {}
 
@@ -164,12 +167,17 @@ export class PostService {
     return this.buildPublicPost(post);
   }
 
-  async findPublicDetail(id: number) {
-    const post = await this.postRepository.findOne({
-      where: { id, status: PostStatus.PUBLISHED },
-      relations: ['category', 'tags', 'user'],
-    });
-    if (!post) throw new NotFoundException('文章不存在');
+  async findPublicDetail(id: number, authorization?: string) {
+    const post = await this.findOne(id);
+
+    if (post.status !== PostStatus.PUBLISHED) {
+      try {
+        this.authUtil.extractUserId(authorization);
+      } catch {
+        throw new NotFoundException('文章不存在');
+      }
+    }
+
     return this.buildPublicPost(post);
   }
 
@@ -260,6 +268,18 @@ export class PostService {
 
   async remove(id: number) {
     const post = await this.findOne(id);
+
+    // MySQL 不允许 DELETE 子查询引用同一张表，用派生表绕过
+    await this.commentRepository
+      .createQueryBuilder()
+      .delete()
+      .where(
+        'parentId IN (SELECT id FROM (SELECT id FROM comments WHERE postId = :postId) AS tmp)',
+        { postId: id },
+      )
+      .execute();
+    await this.commentRepository.delete({ postId: id });
+
     await this.postRepository.remove(post);
     return true;
   }

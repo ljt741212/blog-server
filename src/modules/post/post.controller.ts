@@ -38,8 +38,11 @@ export class PostController {
   }
 
   @Get(':id')
-  findOne(@Param() params: IdParamDto) {
-    return this.postService.findPublicDetail(params.id);
+  findOne(
+    @Param() params: IdParamDto,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.postService.findPublicDetail(params.id, authorization);
   }
 
   @Post()
