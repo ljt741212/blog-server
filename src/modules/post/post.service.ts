@@ -78,7 +78,7 @@ export class PostService {
       });
     }
 
-    qb.orderBy('post.createdAt', 'DESC');
+    qb.orderBy('post.publishTime', 'DESC').addOrderBy('post.createdAt', 'DESC');
     qb.skip((current - 1) * pageSize).take(pageSize);
 
     const items = await qb.getMany();
@@ -139,7 +139,7 @@ export class PostService {
       });
     }
 
-    qb.orderBy('post.isTop', 'DESC').addOrderBy('post.createdAt', 'DESC');
+    qb.orderBy('post.isTop', 'DESC').addOrderBy('post.publishTime', 'DESC');
     qb.skip((current - 1) * pageSize).take(pageSize);
 
     const items = await qb.getMany();
