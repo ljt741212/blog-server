@@ -4,6 +4,7 @@ import { IsArray, IsOptional, ValidateNested } from 'class-validator';
 import { SaveFriendLinkDto } from '@/modules/friend-link/friend-link.dto';
 import { SaveIcpInfoDto } from '@/modules/icp-info/icp-info.dto';
 import { CreateSeoSettingDto } from '@/modules/seo-setting/seo-setting.dto';
+import { SaveSiteConfigDto } from '@/modules/site-config/site-config.dto';
 
 export class SaveSettingDto {
   @ValidateNested()
@@ -20,4 +21,9 @@ export class SaveSettingDto {
   @ValidateNested()
   @Type(() => SaveIcpInfoDto)
   icp?: SaveIcpInfoDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SaveSiteConfigDto)
+  siteConfig?: SaveSiteConfigDto;
 }

@@ -18,8 +18,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ============================================
 -- 1. 用户表 (users)
 -- ============================================
-DROP TABLE IF EXISTS `users`;
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(50) NOT NULL COMMENT '用户名',
   `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',
@@ -42,8 +41,7 @@ CREATE TABLE `users` (
 -- ============================================
 -- 2. 访客表 (visitors)
 -- ============================================
-DROP TABLE IF EXISTS `visitors`;
-CREATE TABLE `visitors` (
+CREATE TABLE IF NOT EXISTS `visitors` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `visitor_id` varchar(64) DEFAULT NULL COMMENT '访客唯一ID（前端 localStorage 中的 visitorId）',
   `fingerprint` varchar(64) DEFAULT NULL COMMENT '访客指纹（旧字段，兼容用）',
@@ -62,8 +60,7 @@ CREATE TABLE `visitors` (
 -- ============================================
 -- 3. 访客日志表 (visitor_logs)
 -- ============================================
-DROP TABLE IF EXISTS `visitor_logs`;
-CREATE TABLE `visitor_logs` (
+CREATE TABLE IF NOT EXISTS `visitor_logs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `visitorId` int(11) DEFAULT NULL COMMENT '访客ID',
   `ip` varchar(50) NOT NULL COMMENT 'IP地址',
@@ -79,8 +76,7 @@ CREATE TABLE `visitor_logs` (
 -- ============================================
 -- 4. 分类表 (categories)
 -- ============================================
-DROP TABLE IF EXISTS `categories`;
-CREATE TABLE `categories` (
+CREATE TABLE IF NOT EXISTS `categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL COMMENT '分类名称',
   `description` text COMMENT '描述',
@@ -95,8 +91,7 @@ CREATE TABLE `categories` (
 -- ============================================
 -- 5. 标签表 (tags)
 -- ============================================
-DROP TABLE IF EXISTS `tags`;
-CREATE TABLE `tags` (
+CREATE TABLE IF NOT EXISTS `tags` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL COMMENT '标签名称',
   `description` varchar(500) DEFAULT NULL COMMENT '描述',
@@ -111,8 +106,7 @@ CREATE TABLE `tags` (
 -- ============================================
 -- 6. 文章表 (posts)
 -- ============================================
-DROP TABLE IF EXISTS `posts`;
-CREATE TABLE `posts` (
+CREATE TABLE IF NOT EXISTS `posts` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(200) NOT NULL COMMENT '标题',
   `content` text NOT NULL COMMENT '内容',
@@ -141,8 +135,7 @@ CREATE TABLE `posts` (
 -- ============================================
 -- 7. 文章标签关联表（多对多关系）(posts_tags)
 -- ============================================
-DROP TABLE IF EXISTS `posts_tags`;
-CREATE TABLE `posts_tags` (
+CREATE TABLE IF NOT EXISTS `posts_tags` (
   `postsId` int(11) NOT NULL COMMENT '文章ID',
   `tagsId` int(11) NOT NULL COMMENT '标签ID',
   PRIMARY KEY (`postsId`, `tagsId`),
@@ -154,8 +147,7 @@ CREATE TABLE `posts_tags` (
 -- ============================================
 -- 8. 评论表 (comments)
 -- ============================================
-DROP TABLE IF EXISTS `comments`;
-CREATE TABLE `comments` (
+CREATE TABLE IF NOT EXISTS `comments` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `content` text NOT NULL COMMENT '评论内容',
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending' COMMENT '状态：待审核/已通过/已拒绝',
@@ -181,8 +173,7 @@ CREATE TABLE `comments` (
 -- ============================================
 -- 9. 公告表 (announcements)
 -- ============================================
-DROP TABLE IF EXISTS `announcements`;
-CREATE TABLE `announcements` (
+CREATE TABLE IF NOT EXISTS `announcements` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(200) NOT NULL COMMENT '标题',
   `content` text NOT NULL COMMENT '内容',
@@ -198,8 +189,7 @@ CREATE TABLE `announcements` (
 -- ============================================
 -- 10. 更新日志表 (changelogs)
 -- ============================================
-DROP TABLE IF EXISTS `changelogs`;
-CREATE TABLE `changelogs` (
+CREATE TABLE IF NOT EXISTS `changelogs` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `version` varchar(50) NOT NULL COMMENT '版本号',
   `title` varchar(200) NOT NULL COMMENT '标题',
@@ -217,8 +207,7 @@ CREATE TABLE `changelogs` (
 -- ============================================
 -- 11. 友情链接表 (friend_links)
 -- ============================================
-DROP TABLE IF EXISTS `friend_links`;
-CREATE TABLE `friend_links` (
+CREATE TABLE IF NOT EXISTS `friend_links` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL COMMENT '链接名称',
   `url` varchar(255) NOT NULL COMMENT '链接地址',
@@ -231,8 +220,7 @@ CREATE TABLE `friend_links` (
 -- ============================================
 -- 12. SEO设置表 (seo_settings)
 -- ============================================
-DROP TABLE IF EXISTS `seo_settings`;
-CREATE TABLE `seo_settings` (
+CREATE TABLE IF NOT EXISTS `seo_settings` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL COMMENT '标题',
   `description` text COMMENT '描述',
@@ -254,8 +242,7 @@ CREATE TABLE `seo_settings` (
 -- ============================================
 -- 13. ICP备案信息表 (icp_info)
 -- ============================================
-DROP TABLE IF EXISTS `icp_info`;
-CREATE TABLE `icp_info` (
+CREATE TABLE IF NOT EXISTS `icp_info` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `icp_number` varchar(255) DEFAULT NULL COMMENT 'ICP备案号',
   `icp_url` varchar(255) DEFAULT NULL COMMENT 'ICP备案URL',
@@ -268,8 +255,7 @@ CREATE TABLE `icp_info` (
 -- ============================================
 -- 14. 访客留言表 (guest_messages)
 -- ============================================
-DROP TABLE IF EXISTS `guest_messages`;
-CREATE TABLE `guest_messages` (
+CREATE TABLE IF NOT EXISTS `guest_messages` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `content` text NOT NULL COMMENT '留言内容',
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending' COMMENT '状态：待审核/已通过/已拒绝',
@@ -290,8 +276,7 @@ CREATE TABLE `guest_messages` (
 -- ============================================
 -- 15. 站点配置表 (site_config)
 -- ============================================
-DROP TABLE IF EXISTS `site_config`;
-CREATE TABLE `site_config` (
+CREATE TABLE IF NOT EXISTS `site_config` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `background_image` varchar(500) DEFAULT NULL COMMENT '背景图URL',
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
@@ -302,8 +287,7 @@ CREATE TABLE `site_config` (
 -- ============================================
 -- 16. 邮箱验证码表 (email_codes)
 -- ============================================
-DROP TABLE IF EXISTS `email_codes`;
-CREATE TABLE `email_codes` (
+CREATE TABLE IF NOT EXISTS `email_codes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(100) NOT NULL COMMENT '邮箱地址',
   `code` varchar(10) NOT NULL COMMENT '验证码',
