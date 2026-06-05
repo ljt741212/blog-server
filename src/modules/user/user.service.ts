@@ -226,22 +226,12 @@ export class UserService {
       throw new UnauthorizedException('验证码错误或已过期');
     }
 
-    let user = await this.userRepository.findOne({
+    const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
 
     if (!user) {
-      const hashedPassword = await bcrypt.hash(
-        Math.random().toString(36).slice(2),
-        12,
-      );
-      const entity = this.userRepository.create({
-        username: dto.email,
-        nickname: dto.email.split('@')[0],
-        email: dto.email,
-        password: hashedPassword,
-      });
-      user = await this.userRepository.save(entity);
+      throw new UnauthorizedException('该邮箱未注册');
     }
 
     const payload = {
