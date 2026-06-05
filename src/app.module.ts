@@ -8,6 +8,7 @@ import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import config from './config';
+import { AiModule } from './modules/ai/ai.module';
 import { AnnouncementModule } from './modules/announcement/announcement.module';
 import { CategoryModule } from './modules/category/category.module';
 import { ChangelogModule } from './modules/changelog/changelog.module';
@@ -50,6 +51,7 @@ import { EntitiesModule } from './shared/database/entities.module';
     AuthModule,
     DatabaseModule,
     EntitiesModule,
+    AiModule,
     AnnouncementModule,
     SeoSettingModule,
     FriendLinkModule,
