@@ -131,6 +131,7 @@
     ],
     "*.{json,md}": [
       "prettier --write"
-    ]
+    ],
+    "*.ts": "bash -c 'npx tsc --noEmit --pretty'"
   }
 }
