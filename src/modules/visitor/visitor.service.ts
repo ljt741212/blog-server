@@ -2,6 +2,7 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, In, MoreThanOrEqual, Repository } from 'typeorm';
 
+import { ipToLocation } from '@/common/ip-location';
 import { Category } from '@/modules/category/category.entity';
 import { Comment } from '@/modules/comment/comment.entity';
 import { Post } from '@/modules/post/post.entity';
@@ -54,7 +55,7 @@ export class VisitorService {
         fingerprint: dto.visitorId ?? null,
         ip,
         userAgent,
-        location: null,
+        location: ipToLocation(ip),
         lastActiveAt: now,
       });
       visitor = await this.visitorRepo.save(visitor);
@@ -63,6 +64,11 @@ export class VisitorService {
 
       visitor.lastActiveAt = now;
       needSave = true;
+
+      if (!visitor.location) {
+        visitor.location = ipToLocation(ip);
+        needSave = true;
+      }
 
       if (!visitor.userAgent && userAgent) {
         visitor.userAgent = userAgent;
@@ -123,7 +129,7 @@ export class VisitorService {
         fingerprint: dto.visitorId ?? null,
         ip,
         userAgent,
-        location: null,
+        location: ipToLocation(ip),
         lastActiveAt: now,
       });
       await this.visitorRepo.save(visitor);
@@ -131,6 +137,9 @@ export class VisitorService {
     }
 
     visitor.lastActiveAt = now;
+    if (!visitor.location) {
+      visitor.location = ipToLocation(ip);
+    }
     if (!visitor.userAgent && userAgent) {
       visitor.userAgent = userAgent;
     }
@@ -158,13 +167,21 @@ export class VisitorService {
     const [list, count] = await this.visitorRepo.findAndCount({
       where: { lastActiveAt: MoreThanOrEqual(since) },
       order: { lastActiveAt: 'DESC' },
-      select: ['id', 'ip', 'userAgent', 'lastActiveAt', 'visitorId'],
+      select: [
+        'id',
+        'ip',
+        'location',
+        'userAgent',
+        'lastActiveAt',
+        'visitorId',
+      ],
     });
     return {
       count,
       list: list.map((v) => ({
         id: v.id,
         ip: v.ip,
+        location: v.location ?? null,
         userAgent: v.userAgent ?? null,
         lastActiveAt: v.lastActiveAt,
         visitorId: v.visitorId ?? null,
