@@ -16,7 +16,7 @@ GitHub Actions ──► Self-hosted Runner (腾讯云 Lighthouse 广州)
                       └─ seed-admin
 ```
 
-**服务器**：腾讯云 Lighthouse，广州，CentOS 7.6  
+**服务器**：腾讯云 Lighthouse，广州，Ubuntu 22.04  
 **容器端口**：3004  
 **反向代理**：Nginx `/api/` → localhost:3004
 
@@ -134,25 +134,60 @@ networks:
 
 ### .env 配置项
 
-| 变量                    | 说明                                 | 示例                      |
-| ----------------------- | ------------------------------------ | ------------------------- |
-| `DB_PASSWORD`           | MySQL root 密码                      |                           |
-| `DB_DATABASE`           | 数据库名                             | `blog_db`                 |
-| `DB_SYNCHRONIZE`        | 自动同步表结构（生产应设为 `false`） | `false`                   |
-| `JWT_SECRET`            | JWT 签名密钥                         |                           |
-| `PORT`                  | 应用端口                             | `3004`                    |
-| `CORS_ORIGIN`           | CORS 允许的域名                      | `https://your-domain.com` |
-| `EMAIL_HOST`            | SMTP 服务器                          | `smtp.qq.com`             |
-| `EMAIL_PORT`            | SMTP 端口                            | `465`                     |
-| `EMAIL_USER`            | 发件邮箱                             |                           |
-| `EMAIL_PASS`            | SMTP 授权码                          |                           |
-| `OSS_REGION`            | 阿里云 OSS 区域                      | `oss-cn-beijing`          |
-| `OSS_ACCESS_KEY_ID`     | OSS AccessKey                        |                           |
-| `OSS_ACCESS_KEY_SECRET` | OSS SecretKey                        |                           |
-| `OSS_BUCKET`            | OSS Bucket 名称                      |                           |
-| `SEED_ADMIN_USERNAME`   | 初始管理员用户名                     | `admin`                   |
-| `SEED_ADMIN_EMAIL`      | 初始管理员邮箱                       |                           |
-| `SEED_ADMIN_PASSWORD`   | 初始管理员密码                       |                           |
+**数据库**：
+
+| 变量             | 说明                                 | 默认值                   |
+| ---------------- | ------------------------------------ | ------------------------ |
+| `DB_HOST`        | MySQL 主机                           | `mysql`（Docker 服务名） |
+| `DB_PORT`        | MySQL 端口                           | `3306`                   |
+| `DB_USERNAME`    | MySQL 用户名                         | `root`                   |
+| `DB_PASSWORD`    | MySQL root 密码                      | 必填                     |
+| `DB_DATABASE`    | 数据库名                             | `blog_db`                |
+| `DB_SYNCHRONIZE` | 自动同步表结构（生产应设为 `false`） | `false`                  |
+| `DB_LOGGING`     | 数据库日志级别                       | `error`                  |
+
+**应用**：
+
+| 变量          | 说明            | 默认值                         |
+| ------------- | --------------- | ------------------------------ |
+| `JWT_SECRET`  | JWT 签名密钥    | 必填（`openssl rand -hex 64`） |
+| `PORT`        | 应用端口        | `3004`                         |
+| `NODE_ENV`    | 运行环境        | `production`                   |
+| `CORS_ORIGIN` | CORS 允许的域名 | `https://your-domain.com`      |
+
+**邮箱（QQ 邮箱 SMTP）**：
+
+| 变量           | 说明         | 默认值                    |
+| -------------- | ------------ | ------------------------- |
+| `EMAIL_HOST`   | SMTP 服务器  | `smtp.qq.com`             |
+| `EMAIL_PORT`   | SMTP 端口    | `465`                     |
+| `EMAIL_SECURE` | 是否启用 SSL | `true`                    |
+| `EMAIL_USER`   | 发件邮箱     | 必填                      |
+| `EMAIL_PASS`   | SMTP 授权码  | 必填（QQ 邮箱设置中获取） |
+| `EMAIL_FROM`   | 发件人地址   | 同 EMAIL_USER             |
+
+**阿里云 OSS**：
+
+| 变量                    | 说明             | 示例             |
+| ----------------------- | ---------------- | ---------------- |
+| `OSS_REGION`            | OSS 区域         | `oss-cn-beijing` |
+| `OSS_ACCESS_KEY_ID`     | AccessKey ID     | 必填             |
+| `OSS_ACCESS_KEY_SECRET` | AccessKey Secret | 必填             |
+| `OSS_BUCKET`            | Bucket 名称      | `my-blog`        |
+
+**初始化种子数据**：
+
+| 变量                  | 说明             | 默认值  |
+| --------------------- | ---------------- | ------- |
+| `SEED_ADMIN_USERNAME` | 初始管理员用户名 | `admin` |
+| `SEED_ADMIN_EMAIL`    | 初始管理员邮箱   | 必填    |
+| `SEED_ADMIN_PASSWORD` | 初始管理员密码   | 必填    |
+
+**AI 加密**：
+
+| 变量             | 说明                | 默认值                         |
+| ---------------- | ------------------- | ------------------------------ |
+| `ENCRYPTION_KEY` | AI API 密钥加密密钥 | 必填（`openssl rand -hex 32`） |
 
 ---
 

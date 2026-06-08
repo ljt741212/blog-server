@@ -66,7 +66,51 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.2 获取当前用户信息
+#### 1.2 发送邮箱验证码
+
+**接口**: `POST /api/users/send-email-code`
+
+**描述**: 发送邮箱验证码用于邮箱登录（无需认证）
+
+**请求体**:
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+| 字段  | 类型   | 必填 | 说明             |
+| ----- | ------ | ---- | ---------------- |
+| email | string | 是   | 接收验证码的邮箱 |
+
+**注意**: 验证码有效期 5 分钟，同一邮箱 60 秒内只能发送一次。
+
+---
+
+#### 1.3 邮箱验证码登录
+
+**接口**: `POST /api/users/email-login`
+
+**描述**: 使用邮箱和验证码登录（无需认证）
+
+**请求体**:
+
+```json
+{
+  "email": "user@example.com",
+  "code": "123456"
+}
+```
+
+| 字段  | 类型   | 必填 | 说明   |
+| ----- | ------ | ---- | ------ |
+| email | string | 是   | 邮箱   |
+| code  | string | 是   | 验证码 |
+
+---
+
+#### 1.4 获取当前用户信息
 
 **接口**: `GET /api/users/me`
 
@@ -76,7 +120,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.3 获取超级管理员
+#### 1.5 获取超级管理员
 
 **接口**: `GET /api/users/super-admin`
 
@@ -86,7 +130,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.4 修改密码
+#### 1.6 修改密码
 
 **接口**: `PUT /api/users/change-password`
 
@@ -105,7 +149,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.5 分页查询用户
+#### 1.7 分页查询用户
 
 **接口**: `GET /api/users/page`
 
@@ -121,7 +165,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.6 获取用户详情
+#### 1.8 获取用户详情
 
 **接口**: `GET /api/users/:id`
 
@@ -133,7 +177,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.7 创建用户
+#### 1.9 创建用户
 
 **接口**: `POST /api/users`
 
@@ -175,7 +219,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.8 更新用户
+#### 1.10 更新用户
 
 **接口**: `PUT /api/users/:id`
 
@@ -189,7 +233,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.9 删除用户
+#### 1.11 删除用户
 
 **接口**: `DELETE /api/users/:id`
 
@@ -201,7 +245,7 @@ Authorization: Bearer <token>
 
 ---
 
-#### 1.10 删除用户（POST 方式）
+#### 1.12 删除用户（POST 方式）
 
 **接口**: `POST /api/users/:id/delete`
 
@@ -1294,6 +1338,155 @@ Authorization: Bearer <token>
 **查询参数**:
 
 - `mode`: 导入模式，仅支持 `truncate`（清空后导入）
+
+---
+
+### 16. 站点配置模块 (`/api/site-config`)
+
+#### 16.1 获取站点配置
+
+**接口**: `GET /api/site-config`
+
+**描述**: 获取博客站点全局配置（无需认证）
+
+**响应示例**:
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "siteName": "My Blog",
+    "logo": "https://oss.example.com/logo.png",
+    "favicon": "https://oss.example.com/favicon.ico"
+  }
+}
+```
+
+---
+
+#### 16.2 更新站点配置
+
+**接口**: `PUT /api/site-config`
+
+**描述**: 更新站点配置（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "siteName": "My Blog",
+  "logo": "https://oss.example.com/logo.png",
+  "favicon": "https://oss.example.com/favicon.ico",
+  "footer": "© 2026 My Blog"
+}
+```
+
+---
+
+### 17. AI 模块 (`/api/ai`)
+
+#### 17.1 AI 对话
+
+**接口**: `POST /api/ai/chat`
+
+**描述**: 发起 AI 对话，返回流式 SSE 响应（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "messages": [{ "role": "user", "content": "你好" }],
+  "configId": 1
+}
+```
+
+| 字段     | 类型   | 必填 | 说明           |
+| -------- | ------ | ---- | -------------- |
+| messages | array  | 是   | 对话消息列表   |
+| configId | number | 否   | 使用的 AI 配置 |
+
+---
+
+#### 17.2 获取 AI 配置列表
+
+**接口**: `GET /api/ai/configs`
+
+**描述**: 获取所有 AI 模型配置（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+---
+
+#### 17.3 创建/更新配置
+
+**接口**: `POST /api/ai/configs/save`
+
+**描述**: 创建或更新 AI 配置（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+**请求体**:
+
+```json
+{
+  "id": 1,
+  "name": "GPT-4",
+  "provider": "openai",
+  "model": "gpt-4",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com/v1",
+  "temperature": 0.7,
+  "maxTokens": 4096,
+  "isActive": true
+}
+```
+
+| 字段        | 类型    | 必填 | 说明                     |
+| ----------- | ------- | ---- | ------------------------ |
+| id          | number  | 否   | 配置 ID，存在则更新      |
+| name        | string  | 是   | 配置名称                 |
+| provider    | string  | 是   | 提供商（如 openai）      |
+| model       | string  | 是   | 模型标识                 |
+| apiKey      | string  | 是   | API 密钥                 |
+| baseUrl     | string  | 否   | API 基础 URL             |
+| temperature | number  | 否   | 温度参数（0-2，默认0.7） |
+| maxTokens   | number  | 否   | 最大 token（默认2048）   |
+| isActive    | boolean | 否   | 是否启用                 |
+
+---
+
+#### 17.4 删除配置
+
+**接口**: `DELETE /api/ai/configs/:id`
+
+**描述**: 删除 AI 配置（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+---
+
+#### 17.5 切换启用状态
+
+**接口**: `PATCH /api/ai/configs/:id/activate`
+
+**描述**: 切换 AI 配置的启用/禁用状态（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
+
+---
+
+#### 17.6 使用统计
+
+**接口**: `GET /api/ai/usage`
+
+**描述**: 查询 AI API 调用统计（需认证）
+
+**请求头**: `Authorization: Bearer <token>`
 
 ---
 
