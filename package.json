@@ -53,6 +53,7 @@
     "mysql2": "^3.0.0",
     "nestjs-typeorm-paginate": "^4.1.0",
     "nodemailer": "^8.0.8",
+    "openai": "^6.42.0",
     "passport": "^0.6.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
@@ -131,6 +132,7 @@
     ],
     "*.{json,md}": [
       "prettier --write"
-    ]
+    ],
+    "*.ts": "bash -c 'npx tsc --noEmit --pretty'"
   }
 }
