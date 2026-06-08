@@ -369,6 +369,72 @@
 
 ---
 
+### 15. site_config（站点配置表）
+
+**描述**: 存储博客站点全局配置（网站标题、logo、favicon 等）
+
+| 字段名     | 类型         | 约束                        | 说明     |
+| ---------- | ------------ | --------------------------- | -------- |
+| id         | INT          | PRIMARY KEY, AUTO_INCREMENT | 配置 ID  |
+| key        | VARCHAR(100) | UNIQUE, NOT NULL            | 配置键   |
+| value      | TEXT         | NULL                        | 配置值   |
+| created_at | DATETIME(6)  | NOT NULL                    | 创建时间 |
+| updated_at | DATETIME(6)  | NOT NULL                    | 更新时间 |
+
+---
+
+### 16. ai_configs（AI 模型配置表）
+
+**描述**: 存储 AI 模型配置信息
+
+| 字段名      | 类型         | 约束                        | 说明                 |
+| ----------- | ------------ | --------------------------- | -------------------- |
+| id          | INT          | PRIMARY KEY, AUTO_INCREMENT | 配置 ID              |
+| name        | VARCHAR(50)  | NOT NULL                    | 配置名称             |
+| provider    | VARCHAR(20)  | NOT NULL                    | 提供商（如 openai）  |
+| model       | VARCHAR(50)  | NOT NULL                    | 模型标识（如 gpt-4） |
+| api_key     | VARCHAR(255) | NULL                        | API 密钥             |
+| base_url    | VARCHAR(255) | NULL                        | API 基础 URL         |
+| temperature | DECIMAL(3,2) | DEFAULT 0.7                 | 温度参数             |
+| max_tokens  | INT          | DEFAULT 2048                | 最大 token 数        |
+| is_active   | TINYINT(1)   | DEFAULT 0                   | 是否启用             |
+| created_at  | DATETIME(6)  | NOT NULL                    | 创建时间             |
+| updated_at  | DATETIME(6)  | NOT NULL                    | 更新时间             |
+
+---
+
+### 17. ai_usage_logs（AI 使用日志表）
+
+**描述**: 记录 AI API 调用日志
+
+| 字段名        | 类型        | 约束                        | 说明           |
+| ------------- | ----------- | --------------------------- | -------------- |
+| id            | INT         | PRIMARY KEY, AUTO_INCREMENT | 日志 ID        |
+| config_id     | INT         | NULL                        | 关联的模型配置 |
+| model         | VARCHAR(50) | NOT NULL                    | 使用的模型名   |
+| prompt_tokens | INT         | DEFAULT 0                   | 提示 token 数  |
+| output_tokens | INT         | DEFAULT 0                   | 输出 token 数  |
+| total_tokens  | INT         | DEFAULT 0                   | 总 token 数    |
+| action        | VARCHAR(30) | NOT NULL                    | 调用动作       |
+| created_at    | DATETIME(6) | NOT NULL                    | 创建时间       |
+
+---
+
+### 18. email_codes（邮箱验证码表）
+
+**描述**: 存储邮箱登录验证码
+
+| 字段名     | 类型         | 约束                        | 说明               |
+| ---------- | ------------ | --------------------------- | ------------------ |
+| id         | INT          | PRIMARY KEY, AUTO_INCREMENT | 记录 ID            |
+| email      | VARCHAR(100) | NOT NULL                    | 邮箱地址           |
+| code       | VARCHAR(10)  | NOT NULL                    | 验证码             |
+| used       | TINYINT      | DEFAULT 0                   | 0-未使用，1-已使用 |
+| created_at | DATETIME(6)  | NOT NULL                    | 创建时间           |
+| updated_at | DATETIME(6)  | NOT NULL                    | 更新时间           |
+
+---
+
 ## 关系说明
 
 ### ER 图
@@ -401,6 +467,8 @@ Visitor (1) ──< (N) GuestMessage [可选]
 6. **Visitor ↔ VisitorLog**: 一对多。一个访客可有多次访问记录。删除访客时日志保留（SET NULL）。
 
 7. **User/Visitor ↔ Comment/GuestMessage**: 可选关联。通过 `user_id` 或 `visitor_id` 关联到评论或留言。
+
+8. **AiConfig ↔ AiUsage**: 一对多。一个 AI 配置可对应多次调用日志。删除配置时日志保留（SET NULL）。
 
 ## 索引设计
 
@@ -454,6 +522,12 @@ Visitor (1) ──< (N) GuestMessage [可选]
 
 - `0` (FEMALE): 女
 - `1` (MALE): 男
+
+#### AI 相关枚举
+
+**AiConfig.provider**: `openai` 等（由 AI SDK 支持的提供商）
+
+**AiUsage.action**: `chat`（聊天）、`generate`（生成）、`suggest`（建议）等
 
 ## 迁移脚本
 

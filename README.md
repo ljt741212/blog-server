@@ -1,420 +1,255 @@
-# Blog Server
-
 <p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
+  <a href="http://www.cx330.cloud/" target="_blank">
+    <img src="https://img.shields.io/badge/🌐-www.cx330.cloud-blue?style=for-the-badge" alt="Blog" />
+  </a>
+  <a href="https://github.com/ljt741212/blog-client" target="_blank">
+    <img src="https://img.shields.io/badge/📦-前端仓库-blue?style=for-the-badge" alt="Frontend" />
+  </a>
+  <img src="https://img.shields.io/badge/NestJS-11-E0234E?logo=nestjs&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/MySQL-8-4479A1?logo=mysql&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Docker-✓-2496ED?logo=docker&style=for-the-badge" />
+  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" />
 </p>
 
-## 项目简介
+<h1 align="center">CX330 Blog — 后端服务</h1>
 
-这是一个基于 [NestJS](https://nestjs.com/) 框架开发的博客系统后端服务。项目使用 TypeScript 开发，采用模块化设计，集成了多种现代化技术栈。本系统提供了完整的博客功能，包括文章管理、用户管理、评论系统、访客统计等核心功能。
+<p align="center">
+  <b>基于 NestJS + TypeORM + MySQL 的全功能博客后端，RESTful API</b><br/>
+  认证 · AI 写作 · OSS 上传 · 邮箱登录 · 数据导入导出 · SSE 实时推送
+</p>
 
-## 主要功能
+<p align="center">
+  <a href="http://www.cx330.cloud/" target="_blank"><b>🏠 线上博客</b></a> ·
+  <a href="https://github.com/ljt741212/blog-client" target="_blank"><b>📦 前端仓库</b></a> ·
+  <a href="./docs/API.md"><b>📖 API 文档</b></a> ·
+  <a href="./docs/ARCHITECTURE.md"><b>🏗️ 架构设计</b></a> ·
+  <a href="./docs/DATABASE.md"><b>🗄️ 数据库</b></a> ·
+  <a href="./docs/DEPLOY.md"><b>🚀 部署</b></a>
+</p>
 
-- ✅ **用户认证与授权** - 基于 JWT 的身份认证系统
-- ✅ **文章管理** - 完整的文章 CRUD 操作，支持分类、标签、置顶等功能
-- ✅ **评论系统** - 文章评论管理，支持审核机制
-- ✅ **分类和标签管理** - 灵活的文章分类和标签系统
-- ✅ **访客统计** - 访客访问记录和统计分析
-- ✅ **文件上传** - 基于阿里云 OSS 的文件上传服务
-- ✅ **友链管理** - 友情链接管理功能
-- ✅ **留言板** - 访客留言功能
-- ✅ **更新日志** - 系统更新日志管理
-- ✅ **SEO 设置** - SEO 相关配置管理
-- ✅ **系统设置** - 系统基础配置管理
+<p align="center">
+  ⭐ 如果这个项目对你有帮助，欢迎 Star / Fork / Watch
+</p>
 
-## 技术栈
+---
 
-### 核心框架
-- **NestJS** ^11.0.1 - 渐进式 Node.js 框架，提供完整的 MVC 架构支持
-- **TypeScript** ^5.7.3 - 强类型的 JavaScript 超集
-- **Express** - 底层 HTTP 服务器框架
+## 📋 目录
 
-### 数据库
-- **TypeORM** ^0.3.0 - 强大的 ORM 框架，支持多种数据库
-- **MySQL2** ^3.0.0 - MySQL 数据库驱动
+- [功能模块](#-功能模块)
+- [项目结构](#-项目结构)
+- [技术栈](#-技术栈)
+- [快速开始](#-快速开始)
+- [环境变量](#-环境变量)
+- [部署](#-部署)
+- [文档](#-文档)
 
-### 认证与安全
-- **@nestjs/jwt** ^10.0.0 - JWT 认证模块
-- **@nestjs/passport** ^10.0.0 - Passport 身份认证中间件
-- **passport-jwt** ^4.0.1 - JWT 策略
-- **bcryptjs** ^2.4.3 - 密码加密
+---
 
-### 数据验证与转换
-- **class-validator** ^0.14.0 - 基于装饰器的数据验证
-- **class-transformer** ^0.5.1 - 对象转换工具
+## 📦 功能模块
 
-### 文件存储
-- **ali-oss** ^6.23.0 - 阿里云 OSS 对象存储服务
+> 共 16 个功能模块，18 张数据表，100+ API 接口
 
-### API 文档
-- **@nestjs/swagger** ^11.0.7 - API 文档自动生成工具
+### 核心模块
 
-### 工具库
-- **lodash** ^4.17.21 - JavaScript 工具库
-- **nestjs-typeorm-paginate** ^4.1.0 - 分页工具
+| 模块               | 路由                          | 功能                                                      |
+| ------------------ | ----------------------------- | --------------------------------------------------------- |
+| 🔐 **用户认证**    | `/api/users`                  | JWT 登录 · 邮箱验证码登录 · 密码修改 · 个人信息           |
+| 📝 **文章管理**    | `/api/posts`                  | 增删改查 · 发布/草稿/归档 · 置顶 · 浏览量/点赞 · Markdown |
+| 🏷️ **分类 & 标签** | `/api/categories` `/api/tags` | 无限层级分类 · 标签管理 · 状态控制                        |
 
-## 项目结构
+### 互动模块
+
+| 模块            | 路由                  | 功能                                                  |
+| --------------- | --------------------- | ----------------------------------------------------- |
+| 💬 **评论系统** | `/api/comments`       | 文章评论 · 嵌套回复 · 审核（待审/通过/拒绝）          |
+| 📋 **留言板**   | `/api/guest-messages` | 访客留言 · 管理员回复 · 审核                          |
+| 📊 **访客统计** | `/api/visitor`        | 访问记录 · 心跳上报 · **SSE 实时在线人数** · 数据看板 |
+
+### 内容 & 配置
+
+| 模块               | 路由                                                                  | 功能                                  |
+| ------------------ | --------------------------------------------------------------------- | ------------------------------------- |
+| 📁 **文件上传**    | `/api/oss`                                                            | 阿里云 OSS 上传 · 签名 URL · 文件管理 |
+| 🔗 **友链管理**    | `/api/friend-links`                                                   | 友情链接增删改查 · 排序               |
+| 📢 **公告 & 日志** | `/api/announcements` `/api/changelogs`                                | 站点公告 · 更新日志 · 发布管理        |
+| ⚙️ **站点配置**    | `/api/site-config` `/api/setting` `/api/seo-settings` `/api/icp-info` | 全局配置 · SEO · ICP 备案 · 个人信息  |
+
+### 高级功能
+
+| 模块            | 路由                 | 功能                                                                                      |
+| --------------- | -------------------- | ----------------------------------------------------------------------------------------- |
+| 🤖 **AI 助手**  | `/api/ai`            | **流式对话 (SSE)** · 多模型（OpenAI / DeepSeek / Anthropic）· API Key 加密存储 · 用量统计 |
+| 📦 **数据迁移** | `/api/data-transfer` | 全量 ZIP 导出/导入 · WordPress XML 导入 · JSON 备份                                       |
+
+---
+
+## 📁 项目结构
 
 ```
-server/
+blog-server/
 ├── src/
-│   ├── main.ts                 # 应用入口文件
-│   ├── app.module.ts           # 根模块
-│   ├── app.controller.ts       # 根控制器
-│   ├── app.service.ts          # 根服务
-│   ├── config/                 # 配置文件
-│   │   ├── index.ts
-│   │   ├── database.config.ts  # 数据库配置
-│   │   ├── oss.config.ts       # OSS 配置
-│   │   └── data-source.ts      # TypeORM 数据源
-│   ├── modules/                # 业务模块
-│   │   ├── user/               # 用户模块
-│   │   ├── post/               # 文章模块
-│   │   ├── category/           # 分类模块
-│   │   ├── tag/                # 标签模块
-│   │   ├── comment/            # 评论模块
-│   │   ├── visitor/            # 访客模块
-│   │   ├── oss/                # 文件上传模块
-│   │   ├── friend-link/        # 友链模块
-│   │   ├── guest-message/      # 留言模块
-│   │   ├── changelog/          # 更新日志模块
-│   │   ├── setting/            # 设置模块
-│   │   ├── seo-setting/        # SEO 设置模块
-│   │   └── icp-info/           # ICP 信息模块
-│   ├── common/                 # 公共模块
-│   │   ├── decorators/         # 装饰器
-│   │   ├── guards/             # 守卫
-│   │   ├── interceptors/       # 拦截器
-│   │   ├── pagination/         # 分页工具
-│   │   ├── constants/          # 常量
-│   │   └── model/              # 数据模型
-│   ├── shared/                 # 共享模块
-│   │   └── database/           # 数据库模块
-│   ├── migrations/             # 数据库迁移文件
-│   └── global/                 # 全局工具
-├── test/                       # 测试文件
-├── .env.example                # 环境变量示例
-├── package.json
-├── tsconfig.json
-└── README.md
+│   ├── common/              # 公共工具：装饰器、守卫、拦截器、过滤器、分页
+│   ├── config/              # 应用配置（数据库、JWT、OSS、邮件、AI）
+│   ├── modules/             # 业务模块（16 个）
+│   │   ├── ai/              #   🤖 AI 对话 + 多模型
+│   │   ├── announcement/    #   📢 站点公告
+│   │   ├── category/        #   🏷️ 文章分类
+│   │   ├── changelog/       #   📝 更新日志
+│   │   ├── comment/         #   💬 文章评论
+│   │   ├── data-transfer/   #   📦 数据导入导出
+│   │   ├── email/           #   📧 邮件发送
+│   │   ├── friend-link/     #   🔗 友情链接
+│   │   ├── guest-message/   #   📋 访客留言
+│   │   ├── icp-info/        #   📋 ICP 备案
+│   │   ├── oss/             #   📁 阿里云 OSS
+│   │   ├── post/            #   📝 文章管理
+│   │   ├── seo-setting/     #   🔍 SEO 配置
+│   │   ├── setting/         #   ⚙️ 站点设置
+│   │   ├── site-config/     #   ⚙️ 全局配置
+│   │   ├── tag/             #   🏷️ 标签管理
+│   │   ├── user/            #   🔐 用户认证
+│   │   └── visitor/         #   📊 访客统计 + SSE
+│   ├── shared/              # 共享模块（Auth、Database、JWT）
+│   ├── migrations/          # TypeORM 数据库迁移
+│   └── scripts/             # 脚本（种子数据等）
+├── docs/                    # 📖 完整文档
+├── Dockerfile               # 多阶段构建
+├── docker-compose.yml       # MySQL + App 一键部署
+└── .github/workflows/       # CI/CD（GitHub Actions）
 ```
 
-## 快速开始
+---
 
-### 系统要求
+## 🛠️ 技术栈
 
-- Node.js >= 16.x
-- MySQL >= 8.0
-- npm >= 7.x 或 pnpm >= 8.x
+| 类别         | 技术选型                                      | 说明                                 |
+| ------------ | --------------------------------------------- | ------------------------------------ |
+| **框架**     | NestJS 11 + Express                           | 企业级 Node.js 框架，模块化架构      |
+| **语言**     | TypeScript 5                                  | 类型安全                             |
+| **ORM**      | TypeORM                                       | 支持 Migration、Repository 模式      |
+| **数据库**   | MySQL 8                                       | 18 张表，utf8mb4 字符集              |
+| **认证**     | JWT + Passport + bcrypt                       | 无状态认证 + 密码哈希                |
+| **文件存储** | 阿里云 OSS                                    | 对象存储 + 签名 URL                  |
+| **邮件**     | Nodemailer                                    | QQ 邮箱 SMTP，验证码登录             |
+| **验证**     | class-validator + class-transformer           | DTO 自动校验                         |
+| **AI**       | SSE 流式响应                                  | OpenAI / DeepSeek / Anthropic 多模型 |
+| **文档**     | Swagger                                       | 开发环境自动生成                     |
+| **工程化**   | pnpm · ESLint · Prettier · Husky · commitlint | 代码规范 + Git Hooks                 |
+| **部署**     | Docker · GitHub Actions · Self-hosted Runner  | CI/CD 自动部署                       |
 
-### 安装步骤
+---
 
-1. **克隆项目**
+## 🚀 快速开始
+
+### 前置要求
+
+- **Node.js** >= 18
+- **pnpm** >= 8
+- **MySQL** >= 8
+
+### 本地开发
 
 ```bash
-git clone <repository-url>
-cd Blog-project/server
-```
+# 1. 克隆
+git clone https://github.com/ljt741212/blog-server.git
+cd blog-server
 
-2. **安装依赖**
-
-```bash
-npm install
-# 或
+# 2. 安装依赖
 pnpm install
-```
 
-3. **配置环境变量**
-
-复制 `.env.example` 文件为 `.env`，并修改相应配置：
-
-```bash
+# 3. 配置环境变量
 cp .env.example .env
+# 编辑 .env，填写必填项：数据库密码、JWT 密钥
+
+# 4. 创建数据库
+mysql -u root -p -e "CREATE DATABASE blog_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 5. 运行迁移
+pnpm migration:run
+
+# 6. 启动
+pnpm start:dev
 ```
 
-编辑 `.env` 文件，配置以下参数：
+启动后访问：
 
-```env
-# 数据库配置
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=your_password
-DB_DATABASE=blog_db
-DB_SYNCHRONIZE=false
-DB_LOGGING=error
+- **API 服务**：http://localhost:3004
+- **Swagger 文档**：http://localhost:3004/api
+- **健康检查**：http://localhost:3004/api/
 
-# 应用配置
-PORT=3004
-NODE_ENV=development
-
-# JWT 配置（需要在代码中配置）
-JWT_SECRET=your_jwt_secret_key
-JWT_EXPIRES_IN=7d
-
-# OSS 配置（可选）
-OSS_REGION=your_region
-OSS_ACCESS_KEY_ID=your_access_key_id
-OSS_ACCESS_KEY_SECRET=your_access_key_secret
-OSS_BUCKET=your_bucket
-OSS_ENDPOINT=your_endpoint
-OSS_PUBLIC_BASE_URL=your_public_base_url
-OSS_DEFAULT_DIR=uploads
-OSS_SIGN_EXPIRES=600
-OSS_MAX_FILE_SIZE_MB=10
-OSS_ALLOWED_MIME_PREFIXES=image/
-```
-
-4. **创建数据库**
-
-```sql
-CREATE DATABASE blog_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-5. **运行数据库迁移**
+### 可用命令
 
 ```bash
-npm run migration:run
+pnpm start:dev           # 开发模式（热重载）
+pnpm build               # 生产构建
+pnpm start:prod          # 生产启动
+pnpm lint                # ESLint 检查 + 修复
+pnpm format              # Prettier 格式化
+pnpm test                # 单元测试
+pnpm migration:run       # 执行数据库迁移
+pnpm migration:generate  # 根据实体自动生成迁移
+pnpm seed                # 初始化管理员账号
 ```
 
-6. **启动开发服务器**
+---
+
+## 🔧 环境变量
+
+### 必填
+
+| 变量          | 说明           | 示例                      |
+| ------------- | -------------- | ------------------------- |
+| `DB_PASSWORD` | MySQL 密码     | `your_password`           |
+| `JWT_SECRET`  | JWT 签名密钥   | `openssl rand -hex 64`    |
+| `CORS_ORIGIN` | 允许的前端域名 | `https://www.cx330.cloud` |
+
+### 可选（功能增强）
+
+| 类别 | 变量                                                                  | 说明                       |
+| ---- | --------------------------------------------------------------------- | -------------------------- |
+| 邮箱 | `EMAIL_HOST` `EMAIL_PORT` `EMAIL_USER` `EMAIL_PASS`                   | QQ 邮箱 SMTP（验证码登录） |
+| OSS  | `OSS_REGION` `OSS_ACCESS_KEY_ID` `OSS_ACCESS_KEY_SECRET` `OSS_BUCKET` | 阿里云 OSS（文件上传）     |
+| 种子 | `SEED_ADMIN_USERNAME` `SEED_ADMIN_EMAIL` `SEED_ADMIN_PASSWORD`        | 初始管理员                 |
+| AI   | `ENCRYPTION_KEY`                                                      | AI API Key 加密密钥        |
+
+> 完整配置见 [`.env.example`](./.env.example) 和 [部署文档](./docs/DEPLOY.md)
+
+---
+
+## 🚢 部署
 
 ```bash
-npm run start:dev
+# Docker Compose 一键部署（MySQL + App）
+docker compose up -d
+
+# 或者单独构建镜像
+docker build -t blog-server:latest .
 ```
 
-应用将在 `http://localhost:3004` 启动，API 前缀为 `/api`。
-
-## 可用脚本
-
-```bash
-# 开发
-npm run start:dev          # 启动开发服务器（热重载）
-
-# 生产
-npm run build              # 构建项目
-npm run start:prod         # 启动生产服务器
-
-# 代码质量
-npm run format             # 格式化代码
-npm run lint               # 代码检查并自动修复
-
-# 测试
-npm run test               # 运行单元测试
-npm run test:watch         # 监听模式运行测试
-npm run test:cov           # 生成测试覆盖率报告
-npm run test:e2e           # 运行端到端测试
-
-# 数据库迁移
-npm run migration:create   # 创建新的迁移文件
-npm run migration:generate # 根据实体变更生成迁移文件
-npm run migration:run      # 运行迁移
-npm run migration:revert   # 回滚迁移
-npm run schema:sync        # 同步数据库架构（开发环境）
-npm run schema:drop        # 删除数据库架构（危险操作）
-```
-
-## API 文档
-
-启动应用后，访问以下地址查看 Swagger API 文档：
+### CI/CD 流水线
 
 ```
-http://localhost:3004/api
+GitHub push main → Actions → Self-hosted Runner
+  → git fetch → docker build → compose up
+  → migration:run → seed-admin → prune
 ```
 
-> 注意：如果项目已集成 Swagger，可以通过上述地址访问。否则需要先配置 Swagger。
+> 详细说明见 [部署文档](./docs/DEPLOY.md) — 包含 Docker、Nginx 反向代理、SSL 配置、故障排查
 
-## 主要 API 端点
+---
 
-### 用户相关 (`/api/users`)
-- `POST /api/users/login` - 用户登录
-- `GET /api/users/me` - 获取当前用户信息
-- `PUT /api/users/change-password` - 修改密码
-- `GET /api/users/page` - 分页查询用户（需认证）
-- `POST /api/users` - 创建用户（需认证）
-- `PUT /api/users/:id` - 更新用户（需认证）
-- `DELETE /api/users/:id` - 删除用户（需认证）
+## 📖 文档
 
-### 文章相关 (`/api/posts`)
-- `GET /api/posts` - 获取所有文章
-- `GET /api/posts/page` - 分页查询文章
-- `GET /api/posts/:id` - 获取文章详情
-- `POST /api/posts` - 创建文章（需认证）
-- `PUT /api/posts/:id/status` - 更新文章状态（需认证）
-- `PUT /api/posts/:id/views` - 增加浏览量
-- `PUT /api/posts/:id/likes` - 增加点赞数
-- `PUT /api/posts/:id/top` - 设置/取消置顶（需认证）
-- `DELETE /api/posts/:id` - 删除文章（需认证）
+| 文档                               | 内容                              |
+| ---------------------------------- | --------------------------------- |
+| [API 文档](./docs/API.md)          | 全部接口，含请求/响应示例         |
+| [架构设计](./docs/ARCHITECTURE.md) | 模块划分 · 认证流程 · 性能优化    |
+| [数据库设计](./docs/DATABASE.md)   | 18 张表结构 · 关系 · 枚举         |
+| [部署文档](./docs/DEPLOY.md)       | Docker · CI/CD · Nginx · 故障排查 |
 
-### 分类相关 (`/api/categories`)
-- `GET /api/categories` - 获取所有分类
-- `GET /api/categories/page` - 分页查询分类
-- `GET /api/categories/:id` - 获取分类详情
-- `POST /api/categories` - 创建分类（需认证）
-- `PATCH /api/categories/:id` - 更新分类（需认证）
-- `PUT /api/categories/:id/status` - 更新分类状态（需认证）
-- `DELETE /api/categories/:id` - 删除分类（需认证）
+---
 
-### 标签相关 (`/api/tags`)
-- `GET /api/tags` - 获取所有标签
-- `GET /api/tags/page` - 分页查询标签
-- `GET /api/tags/:id` - 获取标签详情
-- `POST /api/tags` - 创建标签（需认证）
-- `PATCH /api/tags/:id` - 更新标签（需认证）
-- `DELETE /api/tags/:id` - 删除标签（需认证）
+## 📄 License
 
-### 评论相关 (`/api/comments`)
-- `POST /api/comments` - 创建评论
-- `GET /api/comments/page` - 分页查询评论
-- `GET /api/comments/by-post` - 根据文章 ID 查询评论
-- `PUT /api/comments/:id/status` - 更新评论状态（需认证）
-- `DELETE /api/comments/:id` - 删除评论（需认证）
-
-### 访客相关 (`/api/visitor`)
-- `POST /api/visitor/visit` - 记录访客访问
-- `GET /api/visitor` - 获取所有访客（需认证）
-- `GET /api/visitor/dashboard` - 获取访客统计（需认证）
-
-### 文件上传相关 (`/api/oss`)
-- `POST /api/oss/upload` - 上传文件（需认证）
-- `GET /api/oss/sign-url` - 获取签名 URL（需认证）
-- `GET /api/oss/download` - 下载文件（需认证）
-
-更多 API 详情请参考 [API 文档](./docs/API.md)。
-
-## 认证说明
-
-大部分管理接口需要 JWT 认证。认证方式：
-
-1. 通过 `/api/users/login` 接口登录获取 token
-2. 在请求头中添加 `Authorization: Bearer <token>`
-
-示例：
-
-```bash
-curl -H "Authorization: Bearer your_token_here" http://localhost:3004/api/users/me
-```
-
-## 数据库设计
-
-主要数据表包括：
-
-- `user` - 用户表
-- `post` - 文章表
-- `category` - 分类表
-- `tag` - 标签表
-- `comment` - 评论表
-- `visitor` - 访客表
-- `visitor_log` - 访客访问日志表
-- `friend_link` - 友链表
-- `guest_message` - 留言表
-- `changelog` - 更新日志表
-- `setting` - 设置表
-- `seo_setting` - SEO 设置表
-- `icp_info` - ICP 信息表
-
-详细数据库设计请参考 [数据库文档](./docs/DATABASE.md)。
-
-## 开发指南
-
-### 代码规范
-
-项目遵循以下代码规范：
-
-- 使用 TypeScript 严格模式
-- 遵循 NestJS 最佳实践
-- 使用 ESLint 和 Prettier 进行代码格式化
-- 使用 Husky 进行 Git hooks 管理
-
-### 添加新模块
-
-1. 使用 NestJS CLI 生成模块：
-
-```bash
-nest g module modules/your-module
-nest g controller modules/your-module
-nest g service modules/your-module
-```
-
-2. 创建实体文件 `your-module.entity.ts`
-3. 创建 DTO 文件 `your-module.dto.ts`
-4. 在 `app.module.ts` 中注册新模块
-
-### 数据库迁移
-
-创建迁移文件：
-
-```bash
-npm run migration:create ./src/migrations/your-migration-name
-```
-
-根据实体变更生成迁移：
-
-```bash
-npm run migration:generate ./src/migrations/update-table
-```
-
-运行迁移：
-
-```bash
-npm run migration:run
-```
-
-## 部署
-
-### 生产环境构建
-
-```bash
-npm run build
-npm run start:prod
-```
-
-### Docker 部署
-
-（待补充 Dockerfile 和 docker-compose.yml）
-
-### 环境变量
-
-生产环境需要配置以下环境变量：
-
-- `NODE_ENV=production`
-- `DB_SYNCHRONIZE=false`（重要：生产环境必须为 false）
-- 其他必要的数据库和 OSS 配置
-
-详细部署说明请参考 [部署文档](./docs/DEPLOYMENT.md)。
-
-## 常见问题
-
-### 1. 数据库连接失败
-
-检查 `.env` 文件中的数据库配置是否正确，确保数据库服务已启动。
-
-### 2. JWT 认证失败
-
-确保请求头中包含正确的 `Authorization` 字段，格式为 `Bearer <token>`。
-
-### 3. 文件上传失败
-
-检查 OSS 配置是否正确，确保有足够的权限访问 OSS 服务。
-
-## 贡献指南
-
-1. Fork 本项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
-## 许可证
-
-本项目采用 UNLICENSED 许可证。
-
-## 作者
-
-linzai
-
-## 相关链接
-
-- [NestJS 官方文档](https://docs.nestjs.com/)
-- [TypeORM 文档](https://typeorm.io/)
-- [Swagger 文档](https://swagger.io/)
+MIT — 自由使用、修改、分发。

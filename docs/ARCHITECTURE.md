@@ -284,6 +284,57 @@
 
 **路径**: `src/modules/data-transfer/`
 
+#### 16. AI 模块 (AI Module)
+
+**路径**: `src/modules/ai/`
+
+**职责**:
+
+- AI 聊天对话（流式 SSE 响应）
+- AI 配置管理（CRUD + 切换启用状态）
+- AI 使用量统计日志
+
+**核心接口**:
+
+- `POST /api/ai/chat` — AI 对话（流式）
+- `GET /api/ai/configs` — 获取 AI 配置列表
+- `POST /api/ai/configs/save` — 创建/更新配置
+- `DELETE /api/ai/configs/:id` — 删除配置
+- `PATCH /api/ai/configs/:id/activate` — 切换启用状态
+- `GET /api/ai/usage` — 查询使用统计
+
+**权限**: 需登录认证
+
+#### 17. 站点配置模块 (Site Config Module)
+
+**路径**: `src/modules/site-config/`
+
+**职责**:
+
+- 博客站点全局配置（网站标题、logo、favicon、footer 等）
+- 键值对存储，前端按需读取
+
+**核心接口**:
+
+- `GET /api/site-config` — 获取当前站点配置
+- `PUT /api/site-config` — 更新站点配置
+
+**权限**: 读取无需认证，写入需认证
+
+#### 18. 邮件模块 (Email Module)
+
+**路径**: `src/modules/email/`
+
+**职责**:
+
+- 发送邮箱验证码（QQ 邮箱 SMTP）
+- 验证码有效期和防刷机制
+- 邮箱登录支持
+
+**关联实体**: `email_codes`（邮箱验证码表）
+
+**权限**: 发送验证码无需认证
+
 ### 共享模块
 
 #### Shared Module
@@ -564,6 +615,64 @@ CREATE TABLE icp_info (
 );
 ```
 
+#### site_config（站点配置表）
+
+```sql
+CREATE TABLE site_config (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  key VARCHAR(100) UNIQUE NOT NULL,
+  value TEXT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
+#### ai_configs（AI 模型配置表）
+
+```sql
+CREATE TABLE ai_configs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(50) NOT NULL,
+  provider VARCHAR(20) NOT NULL,
+  model VARCHAR(50) NOT NULL,
+  api_key VARCHAR(255) NULL,
+  base_url VARCHAR(255) NULL,
+  temperature DECIMAL(3,2) DEFAULT 0.7,
+  max_tokens INT DEFAULT 2048,
+  is_active TINYINT(1) DEFAULT 0,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
+#### ai_usage_logs（AI 使用日志表）
+
+```sql
+CREATE TABLE ai_usage_logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  config_id INT NULL,
+  model VARCHAR(50) NOT NULL,
+  prompt_tokens INT DEFAULT 0,
+  output_tokens INT DEFAULT 0,
+  total_tokens INT DEFAULT 0,
+  action VARCHAR(30) NOT NULL,
+  created_at DATETIME(6) NOT NULL
+);
+```
+
+#### email_codes（邮箱验证码表）
+
+```sql
+CREATE TABLE email_codes (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  email VARCHAR(100) NOT NULL,
+  code VARCHAR(10) NOT NULL,
+  used TINYINT DEFAULT 0,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL
+);
+```
+
 ### 关系说明
 
 1. **User ↔ Post**: 一对多。删除用户时文章保留（SET NULL）。
@@ -579,6 +688,8 @@ CREATE TABLE icp_info (
 6. **Visitor ↔ VisitorLog**: 一对多。删除访客时日志保留（SET NULL）。
 
 7. **User/Visitor ↔ Comment/GuestMessage**: 可选关联。通过 `user_id` 或 `visitor_id` 关联。
+
+8. **AiConfig ↔ AiUsage**: 一对多。删除配置时日志保留（SET NULL）。
 
 ## 认证与授权
 
