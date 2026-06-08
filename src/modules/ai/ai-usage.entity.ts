@@ -11,6 +11,7 @@ export enum AiAction {
   POLISH = 'polish',
   SUMMARY = 'summary',
   TITLE = 'title',
+  ARTICLE_ADVICE = 'article_advice',
   CHAT = 'chat',
 }
 
