@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { pickBy } from 'lodash';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
@@ -31,7 +32,7 @@ export class CategoryService {
         kw: `%${query.searchValue}%`,
       });
     }
-    if (typeof query.status !== 'undefined') {
+    if (query.status !== undefined) {
       qb.andWhere('category.status = :status', { status: query.status });
     }
 
@@ -71,11 +72,10 @@ export class CategoryService {
 
   async update(id: number, dto: UpdateCategoryDto) {
     const category = await this.findOne(id);
-
-    if (typeof dto.name !== 'undefined') category.name = dto.name;
-    if (typeof dto.description !== 'undefined')
-      category.description = dto.description;
-    if (typeof dto.status !== 'undefined') category.status = dto.status;
+    Object.assign(
+      category,
+      pickBy(dto, (v) => v !== undefined),
+    );
 
     try {
       return await this.categoryRepository.save(category);

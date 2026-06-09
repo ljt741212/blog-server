@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { pickBy } from 'lodash';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
@@ -20,7 +21,7 @@ export class AnnouncementService {
   async paginateForAdmin(query: AnnouncementPageQueryDto) {
     const qb = this.repo.createQueryBuilder('a');
 
-    if (typeof query.status !== 'undefined') {
+    if (query.status !== undefined) {
       qb.andWhere('a.status = :status', { status: query.status });
     }
     if (query.searchValue) {
@@ -59,11 +60,10 @@ export class AnnouncementService {
 
   async update(id: number, dto: SaveAnnouncementDto) {
     const item = await this.findOne(id);
-    const { title, content, status, isTop } = dto;
-    if (typeof title !== 'undefined') item.title = title;
-    if (typeof content !== 'undefined') item.content = content;
-    if (typeof status !== 'undefined') item.status = status;
-    if (typeof isTop !== 'undefined') item.isTop = isTop;
+    Object.assign(
+      item,
+      pickBy(dto, (v) => v !== undefined),
+    );
     return this.repo.save(item);
   }
 

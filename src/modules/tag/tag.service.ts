@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { pickBy } from 'lodash';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
@@ -31,7 +32,7 @@ export class TagService {
         kw: `%${query.searchValue}%`,
       });
     }
-    if (typeof query.status !== 'undefined') {
+    if (query.status !== undefined) {
       qb.andWhere('tag.status = :status', { status: query.status });
     }
 
@@ -72,11 +73,10 @@ export class TagService {
 
   async update(id: number, dto: UpdateTagDto) {
     const tag = await this.findOne(id);
-
-    if (typeof dto.name !== 'undefined') tag.name = dto.name;
-    if (typeof dto.description !== 'undefined')
-      tag.description = dto.description;
-    if (typeof dto.status !== 'undefined') tag.status = dto.status;
+    Object.assign(
+      tag,
+      pickBy(dto, (v) => v !== undefined),
+    );
 
     try {
       return await this.tagRepository.save(tag);
