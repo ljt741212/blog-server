@@ -1,7 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsOptional, ValidateNested } from 'class-validator';
+import { IsOptional, ValidateNested } from 'class-validator';
 
-import { SaveFriendLinkDto } from '@/modules/friend-link/friend-link.dto';
 import { SaveIcpInfoDto } from '@/modules/icp-info/icp-info.dto';
 import { CreateSeoSettingDto } from '@/modules/seo-setting/seo-setting.dto';
 import { SaveSiteConfigDto } from '@/modules/site-config/site-config.dto';
@@ -10,12 +9,6 @@ export class SaveSettingDto {
   @ValidateNested()
   @Type(() => CreateSeoSettingDto)
   seo: CreateSeoSettingDto;
-
-  @IsOptional()
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => SaveFriendLinkDto)
-  links?: SaveFriendLinkDto[];
 
   @IsOptional()
   @ValidateNested()

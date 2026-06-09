@@ -2,8 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { SaveFriendLinkDto } from './friend-link.dto';
-import { FriendLink } from './friend-link.entity';
+import {
+  ApplyFriendLinkDto,
+  BatchSortDto,
+  SaveFriendLinkDto,
+  UpdateFriendLinkStatusDto,
+} from './friend-link.dto';
+import { FriendLink, FriendLinkStatus } from './friend-link.entity';
 
 @Injectable()
 export class FriendLinkService {
@@ -12,9 +17,10 @@ export class FriendLinkService {
     private readonly friendLinkRepository: Repository<FriendLink>,
   ) {}
 
-  async findAll() {
+  async findAll(status?: FriendLinkStatus, sortOrder: 'ASC' | 'DESC' = 'DESC') {
     return this.friendLinkRepository.find({
-      order: { createdAt: 'ASC' },
+      where: status !== undefined ? { status } : {},
+      order: { sort: sortOrder, createdAt: 'ASC' },
     });
   }
 
@@ -24,40 +30,47 @@ export class FriendLinkService {
     return link;
   }
 
-  async create(dto: SaveFriendLinkDto) {
-    const { name, url, description } = dto;
+  async save(dto: SaveFriendLinkDto) {
+    if (dto.id) return this.update(dto.id, dto);
+    return this.create(dto);
+  }
 
-    const entity = this.friendLinkRepository.create({
-      name,
-      url,
-      description,
-    });
+  async create(dto: SaveFriendLinkDto) {
+    const entity = this.friendLinkRepository.create(dto);
     return this.friendLinkRepository.save(entity);
   }
 
   async update(id: number, dto: SaveFriendLinkDto) {
     const link = await this.findOne(id);
-
-    const { name, url, description } = dto;
-
-    if (typeof name !== 'undefined') link.name = name;
-    if (typeof url !== 'undefined') link.url = url;
-    if (typeof description !== 'undefined') link.description = description;
-
+    if (typeof dto.name !== 'undefined') link.name = dto.name;
+    if (typeof dto.url !== 'undefined') link.url = dto.url;
+    if (typeof dto.description !== 'undefined')
+      link.description = dto.description;
+    if (typeof dto.avatar !== 'undefined') link.avatar = dto.avatar;
+    if (typeof dto.sort !== 'undefined') link.sort = dto.sort;
+    if (typeof dto.status !== 'undefined') link.status = dto.status;
     return this.friendLinkRepository.save(link);
   }
 
-  async replaceAll(list: SaveFriendLinkDto[]) {
-    return this.friendLinkRepository.manager.transaction(async (txn) => {
-      await txn.clear(FriendLink);
+  async updateStatus(id: number, dto: UpdateFriendLinkStatusDto) {
+    const link = await this.findOne(id);
+    link.status = dto.status;
+    return this.friendLinkRepository.save(link);
+  }
 
-      if (!list?.length) return [];
+  async apply(dto: ApplyFriendLinkDto) {
+    const entity = this.friendLinkRepository.create({
+      ...dto,
+      status: FriendLinkStatus.DISABLED,
+    });
+    await this.friendLinkRepository.save(entity);
+  }
 
-      const entities = list.map(({ name, url, description }) =>
-        txn.create(FriendLink, { name, url, description }),
-      );
-
-      return txn.save(entities);
+  async batchSort(dto: BatchSortDto) {
+    await this.friendLinkRepository.manager.transaction(async (txn) => {
+      for (const { id, sort } of dto.items) {
+        await txn.update(FriendLink, id, { sort });
+      }
     });
   }
 

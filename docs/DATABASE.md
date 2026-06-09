@@ -289,14 +289,17 @@
 
 **描述**: 存储友情链接信息
 
-| 字段名      | 类型         | 约束                        | 说明     |
-| ----------- | ------------ | --------------------------- | -------- |
-| id          | INT          | PRIMARY KEY, AUTO_INCREMENT | 友链 ID  |
-| name        | VARCHAR(255) | NOT NULL                    | 友链名称 |
-| url         | VARCHAR(255) | NOT NULL                    | 友链 URL |
-| description | TEXT         | NULL                        | 友链描述 |
-| created_at  | DATETIME(6)  | NOT NULL                    | 创建时间 |
-| updated_at  | DATETIME(6)  | NOT NULL                    | 更新时间 |
+| 字段名      | 类型         | 约束                        | 说明                 |
+| ----------- | ------------ | --------------------------- | -------------------- |
+| id          | INT          | PRIMARY KEY, AUTO_INCREMENT | 友链 ID              |
+| name        | VARCHAR(255) | NOT NULL                    | 友链名称             |
+| url         | VARCHAR(255) | NOT NULL                    | 友链 URL             |
+| description | TEXT         | NULL                        | 友链描述             |
+| avatar      | VARCHAR(500) | NULL                        | 头像/图标 URL        |
+| sort        | INT          | NOT NULL, DEFAULT 0         | 排序（越大越靠前）   |
+| status      | TINYINT      | NOT NULL, DEFAULT 1         | 状态：1-启用，0-禁用 |
+| created_at  | DATETIME(6)  | NOT NULL                    | 创建时间             |
+| updated_at  | DATETIME(6)  | NOT NULL                    | 更新时间             |
 
 ---
 
