@@ -212,6 +212,9 @@ CREATE TABLE IF NOT EXISTS `friend_links` (
   `name` varchar(255) NOT NULL COMMENT '链接名称',
   `url` varchar(255) NOT NULL COMMENT '链接地址',
   `description` text COMMENT '描述',
+  `avatar` varchar(500) DEFAULT NULL COMMENT '头像/图标URL',
+  `sort` int(11) NOT NULL DEFAULT 0 COMMENT '排序（越大越靠前）',
+  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '状态：1-启用，0-禁用',
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) COMMENT '创建时间',
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6) COMMENT '更新时间',
   PRIMARY KEY (`id`)
