@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { pickBy } from 'lodash';
 import { Repository } from 'typeorm';
 
 import { SaveIcpInfoDto } from './icp-info.dto';
@@ -29,12 +30,10 @@ export class IcpInfoService {
       return this.icpInfoRepository.save(entity);
     }
 
-    const { icpNumber, icpUrl, websiteName } = dto;
-
-    if (typeof icpNumber !== 'undefined') latest.icpNumber = icpNumber;
-    if (typeof icpUrl !== 'undefined') latest.icpUrl = icpUrl;
-    if (typeof websiteName !== 'undefined') latest.websiteName = websiteName;
-
+    Object.assign(
+      latest,
+      pickBy(dto, (v) => v !== undefined),
+    );
     return this.icpInfoRepository.save(latest);
   }
 }

@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { pickBy } from 'lodash';
 import { Repository } from 'typeorm';
 
 import {
@@ -42,13 +43,10 @@ export class FriendLinkService {
 
   async update(id: number, dto: SaveFriendLinkDto) {
     const link = await this.findOne(id);
-    if (typeof dto.name !== 'undefined') link.name = dto.name;
-    if (typeof dto.url !== 'undefined') link.url = dto.url;
-    if (typeof dto.description !== 'undefined')
-      link.description = dto.description;
-    if (typeof dto.avatar !== 'undefined') link.avatar = dto.avatar;
-    if (typeof dto.sort !== 'undefined') link.sort = dto.sort;
-    if (typeof dto.status !== 'undefined') link.status = dto.status;
+    Object.assign(
+      link,
+      pickBy(dto, (v) => v !== undefined),
+    );
     return this.friendLinkRepository.save(link);
   }
 

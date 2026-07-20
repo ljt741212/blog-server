@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
+import { pickBy } from 'lodash';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
@@ -143,19 +144,7 @@ export class UserService {
   async update(id: number, dto: UpdateUserDto) {
     const user = await this.findOne(id);
 
-    const {
-      username,
-      nickname,
-      email,
-      phone,
-      wechat,
-      avatar,
-      bio,
-      github,
-      password,
-      gender,
-      role,
-    } = dto;
+    const { username, email, password, github, ...fields } = dto;
 
     if (username && username !== user.username) {
       const exists = await this.userRepository.findOne({ where: { username } });
@@ -171,14 +160,12 @@ export class UserService {
     if (typeof password === 'string' && password.length > 0) {
       user.password = await bcrypt.hash(password, 12);
     }
-    if (typeof nickname !== 'undefined') user.nickname = nickname;
-    if (typeof phone !== 'undefined') user.phone = phone;
-    if (typeof wechat !== 'undefined') user.wechat = wechat;
-    if (typeof avatar !== 'undefined') user.avatar = avatar;
-    if (typeof bio !== 'undefined') user.bio = bio;
-    if (typeof github !== 'undefined') user.githubAccount = github;
-    if (typeof gender !== 'undefined') user.gender = gender;
-    if (typeof role !== 'undefined') user.role = role;
+    if (github !== undefined) user.githubAccount = github;
+
+    Object.assign(
+      user,
+      pickBy(fields, (v) => v !== undefined),
+    );
 
     await this.userRepository.save(user);
     return this.findDetailForAdmin(user.id);

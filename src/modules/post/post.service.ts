@@ -39,7 +39,7 @@ export class PostService {
         kw: `%${query.searchValue}%`,
       });
     }
-    if (typeof query.status !== 'undefined') {
+    if (query.status !== undefined) {
       countQb.andWhere('post.status = :status', { status: query.status });
     }
     if (query.categoryId) {
@@ -67,7 +67,7 @@ export class PostService {
         kw: `%${query.searchValue}%`,
       });
     }
-    if (typeof query.status !== 'undefined') {
+    if (query.status !== undefined) {
       qb.andWhere('post.status = :status', { status: query.status });
     }
     if (query.categoryId) {

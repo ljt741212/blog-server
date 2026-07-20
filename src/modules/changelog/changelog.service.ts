@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { pickBy } from 'lodash';
 import { Repository } from 'typeorm';
 
 import { paginateQueryBuilderForAdmin } from '@/common';
@@ -28,11 +29,11 @@ export class ChangelogService {
       );
     }
 
-    if (typeof query.type !== 'undefined') {
+    if (query.type !== undefined) {
       qb.andWhere('changelog.type = :type', { type: query.type });
     }
 
-    if (typeof query.isPublished !== 'undefined') {
+    if (query.isPublished !== undefined) {
       qb.andWhere('changelog.isPublished = :isPublished', {
         isPublished: query.isPublished,
       });
@@ -87,18 +88,13 @@ export class ChangelogService {
 
   async update(id: number, dto: SaveChangelogDto) {
     const changelog = await this.findOne(id);
-
-    const { version, title, content, type, isPublished, releaseDate } = dto;
-
-    if (typeof version !== 'undefined') changelog.version = version;
-    if (typeof title !== 'undefined') changelog.title = title;
-    if (typeof content !== 'undefined') changelog.content = content;
-    if (typeof type !== 'undefined') changelog.type = type;
-    if (typeof isPublished !== 'undefined') changelog.isPublished = isPublished;
-    if (typeof releaseDate !== 'undefined') {
+    const { releaseDate, ...fields } = dto;
+    Object.assign(
+      changelog,
+      pickBy(fields, (v) => v !== undefined),
+    );
+    if (releaseDate !== undefined)
       changelog.releaseDate = new Date(releaseDate);
-    }
-
     return this.changelogRepository.save(changelog);
   }
 
