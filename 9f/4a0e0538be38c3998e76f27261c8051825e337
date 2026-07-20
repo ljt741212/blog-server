@@ -1,0 +1,24 @@
+.github/workflows/deploy.yml
+  5108d95f6e61afbd 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "9f4a0e0538be38c3998e76f27261c8051825e337",
+  "prompts": {
+    "5108d95f6e61afbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebdc7592-55bc-42e5-bc14-9308aafd92fc",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 53,
+      "total_deletions": 1,
+      "accepted_lines": 53,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/3462179413a47e0cc2d039c21d8e45a04cb701c8770b0f9c2e3737122c3c5656"
+    }
+  }
+}
