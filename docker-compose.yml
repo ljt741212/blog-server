@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.0
+    image: crpi-if0dbq06utqk8du0.cn-hongkong.personal.cr.aliyuncs.com/blog-server/mysql:8.0
     container_name: blog-mysql
     restart: always
     environment:
@@ -28,7 +28,7 @@ services:
       - blog_network
 
   app:
-    image: ghcr.io/ljt741212/blog-server:latest
+    image: crpi-if0dbq06utqk8du0.cn-hongkong.personal.cr.aliyuncs.com/blog-server/server:latest
     container_name: blog-server
     restart: always
     ports:

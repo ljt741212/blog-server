@@ -7,48 +7,55 @@ on:
       - 'README.md'
       - 'docs/**'
       - 'LICENSE'
-      - '.github/**'
   workflow_dispatch:
+
+env:
+  REGISTRY: crpi-if0dbq06utqk8du0.cn-hongkong.personal.cr.aliyuncs.com
+  NAMESPACE: blog-server
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to ACR
+        run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
+
+      - name: Build and push blog-server
         run: |
-          set -e
-          cd /opt/blog-repo
-          git fetch origin main
-          git reset --hard origin/main
+          docker build -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} .
+          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}
+          docker tag ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
+          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
 
-      - name: Build and deploy
+      - name: Sync mysql:8.0 to ACR
         run: |
-          set -e
+          docker pull mysql:8.0
+          docker tag mysql:8.0 ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/mysql:8.0
+          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/mysql:8.0
 
-          echo ">>> building image..."
-          cd /opt/blog-repo
-          docker build -t blog-server:latest .
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-          cd /opt/blog-server
+            cd /opt/blog-server
 
-          echo ">>> restarting services..."
-          docker compose up -d --remove-orphans
+            sed -i "s|image: .*blog-server.*|image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}|" docker-compose.yml
 
-          echo ">>> waiting for app to be ready..."
-          sleep 15
-
-          echo ">>> running migrations..."
-          docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
-
-          echo ">>> seeding admin..."
-          docker compose exec -T app node dist/scripts/seed-admin.js || echo "  seed skipped (already seeded or error)"
-
-          echo ">>> cleaning up old images..."
-          docker image prune -f
-
-          echo ">>> container status:"
-          docker compose ps
-
-          echo ">>> recent logs:"
-          docker compose logs --tail 30
+            docker compose pull
+            docker compose up -d --remove-orphans
+            sleep 15
+            docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
+            docker compose exec -T app node dist/scripts/seed-admin.js || echo "seed skipped"
+            docker image prune -f
+            docker compose ps
+            docker compose logs --tail 30
