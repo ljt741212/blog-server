@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, In, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { ipToLocation } from '@/common/ip-location';
+import { parseUserAgent } from '@/common/ua-parser';
 import { Category } from '@/modules/category/category.entity';
 import { Comment } from '@/modules/comment/comment.entity';
 import { Post } from '@/modules/post/post.entity';
@@ -33,8 +34,9 @@ export class VisitorService {
 
   async recordVisit(dto: TrackVisitDto, req: Request) {
     const ip = this.extractClientIp(req);
-    const userAgent =
-      dto.userAgent || (req.headers['user-agent'] as string) || '';
+    const userAgent = parseUserAgent(
+      dto.userAgent || (req.headers['user-agent'] as string) || '',
+    );
 
     let visitor: Visitor | null = null;
 
@@ -113,8 +115,9 @@ export class VisitorService {
    */
   async recordHeartbeat(dto: TrackVisitDto, req: Request) {
     const ip = this.extractClientIp(req);
-    const userAgent =
-      dto.userAgent || (req.headers['user-agent'] as string) || '';
+    const userAgent = parseUserAgent(
+      dto.userAgent || (req.headers['user-agent'] as string) || '',
+    );
 
     let visitor = await this.visitorRepo.findOne({
       where: dto.visitorId
