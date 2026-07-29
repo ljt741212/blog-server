@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from '@/common';
 
 import { TrackVisitDto } from './dto/track-visit.dto';
+import { VisitorPageQueryDto } from './dto/visitor-page-query.dto';
 import { OnlineStreamService } from './online-stream.service';
 import { VisitorService } from './visitor.service';
 
@@ -60,10 +61,10 @@ export class VisitorController {
     return { success: true };
   }
 
-  @Get()
+  @Get('page')
   @UseGuards(JwtAuthGuard)
-  async findAll() {
-    return this.visitorService.findAllVisitors();
+  paginate(@Query() query: VisitorPageQueryDto) {
+    return this.visitorService.paginateForAdmin(query);
   }
 
   @Sse('online/stream')
