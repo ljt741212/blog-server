@@ -1,0 +1,42 @@
+src/modules/visitor/visitor.service.ts
+  3a4b93497f0e0bfb 3,5,13,162-178
+src/modules/visitor/visitor.controller.ts
+  3a4b93497f0e0bfb 15,64,66-67
+src/modules/visitor/dto/visitor-page-query.dto.ts
+  3a4b93497f0e0bfb 1-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0aadbc6d8365e4525a166199f32c0f278f25a71a",
+  "prompts": {
+    "2b33baec3c4bf0e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb17160d-831b-4ca7-bec2-5b0e34ab8a7f",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 29,
+      "total_deletions": 1,
+      "accepted_lines": 0,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/652403af750560245ae2116cf6ada032554cc360300ab1a3d57fd5449dda49cd"
+    },
+    "3a4b93497f0e0bfb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96276417-02b5-49fc-a625-af2b4d9daadc",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 80,
+      "total_deletions": 49,
+      "accepted_lines": 419,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/d3536c699003afaebaf2cd0ee9b4ee46d028a6cd85824ad27c7f57c8f294483e"
+    }
+  }
+}
