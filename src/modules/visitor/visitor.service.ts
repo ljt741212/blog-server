@@ -1,7 +1,8 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, In, MoreThanOrEqual, Repository } from 'typeorm';
+import { Between, MoreThanOrEqual, Repository } from 'typeorm';
 
+import { paginateQueryBuilderForAdmin } from '@/common';
 import { ipToLocation } from '@/common/ip-location';
 import { parseUserAgent } from '@/common/ua-parser';
 import { Category } from '@/modules/category/category.entity';
@@ -9,6 +10,7 @@ import { Comment } from '@/modules/comment/comment.entity';
 import { Post } from '@/modules/post/post.entity';
 
 import { TrackVisitDto } from './dto/track-visit.dto';
+import { VisitorPageQueryDto } from './dto/visitor-page-query.dto';
 import { OnlineStreamService } from './online-stream.service';
 import { VisitorLog } from './visitor-log.entity';
 import { Visitor } from './visitor.entity';
@@ -157,12 +159,23 @@ export class VisitorService {
     return { success: true };
   }
 
-  async findAllVisitors() {
-    return this.visitorRepo.find({
-      order: {
-        id: 'DESC',
-      },
-    });
+  async paginateForAdmin(query: VisitorPageQueryDto) {
+    const { ip, location, startTime, endTime } = query;
+    const qb = this.visitorRepo.createQueryBuilder('visitor');
+
+    const filters = [
+      [ip, 'visitor.ip LIKE :ip', { ip: `%${ip}%` }],
+      [location, 'visitor.location LIKE :loc', { loc: `%${location}%` }],
+      [startTime, 'visitor.lastActiveAt >= :start', { start: startTime }],
+      [endTime, 'visitor.lastActiveAt <= :end', { end: endTime }],
+    ] as const;
+
+    for (const [value, sql, params] of filters) {
+      if (value) qb.andWhere(sql, params);
+    }
+
+    qb.orderBy('visitor.lastActiveAt', 'DESC');
+    return paginateQueryBuilderForAdmin(qb, query);
   }
 
   async getOnlineStats(minutes = 5) {
@@ -206,7 +219,6 @@ export class VisitorService {
     type RawTrend = { date: string; pv: string; uv: string };
     type RawSource = { referer: string | null; count: string };
     type RawCategory = { categoryId: string; name: string; views: string };
-    type RawRecentVisitor = { visitorId: number; lastVisitedAt: Date };
 
     const rawResults = (await Promise.all([
       this.visitorLogRepo.count({
@@ -246,15 +258,6 @@ export class VisitorService {
         .groupBy('category.id')
         .addGroupBy('category.name')
         .getRawMany(),
-      this.visitorLogRepo
-        .createQueryBuilder('log')
-        .select('log.visitorId', 'visitorId')
-        .addSelect('MAX(log.visitedAt)', 'lastVisitedAt')
-        .where('log.visitorId IS NOT NULL')
-        .groupBy('log.visitorId')
-        .orderBy('lastVisitedAt', 'DESC')
-        .limit(20)
-        .getRawMany(),
     ])) as [
       number,
       RawUv | undefined,
@@ -263,7 +266,6 @@ export class VisitorService {
       RawTrend[],
       RawSource[],
       RawCategory[],
-      RawRecentVisitor[],
     ];
 
     const [
@@ -274,7 +276,6 @@ export class VisitorService {
       trendRows,
       sourceRows,
       categoryRows,
-      recentVisitorRows,
     ] = rawResults;
 
     const todayUv = Number(todayUvRow?.uv ?? 0);
@@ -295,32 +296,6 @@ export class VisitorService {
       views: Number(row.views),
     }));
 
-    const recentVisitorRawRows = recentVisitorRows;
-
-    const visitorIds = recentVisitorRawRows.map((row) => row.visitorId);
-    const visitors =
-      visitorIds.length > 0
-        ? await this.visitorRepo.find({
-            where: { id: In(visitorIds) },
-          })
-        : [];
-
-    const visitorMap = new Map<number, Visitor>(visitors.map((v) => [v.id, v]));
-
-    const recentVisitors = recentVisitorRawRows.map((row) => {
-      const v = visitorMap.get(row.visitorId) ?? null;
-      return {
-        id: v?.id ?? row.visitorId,
-        visitorId: v?.id ?? row.visitorId,
-        ip: v?.ip ?? '',
-        pageUrl: null,
-        referer: null,
-        visitedAt: row.lastVisitedAt,
-        location: v?.location ?? null,
-        userAgent: v?.userAgent ?? null,
-      };
-    });
-
     return {
       today: {
         pv: todayPv,
@@ -333,7 +308,6 @@ export class VisitorService {
       trend7d,
       sourceRatio,
       categoryViews,
-      recentVisitors,
     };
   }
 
