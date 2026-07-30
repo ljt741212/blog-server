@@ -1,0 +1,64 @@
+packages/ai-agent/src/agent/graph.ts
+  64142c1c3a27c6cb 10,21
+packages/ai-agent/src/tools/announcement.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-16,20-23
+packages/ai-agent/src/tools/comment.tool.ts
+  64142c1c3a27c6cb 2-3,5-7,12-13,16-19,22-25,28-31,34-37
+packages/ai-agent/src/tools/category.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-16,20-23,25-27,30-36
+packages/ai-agent/src/agent/nodes.ts
+  64142c1c3a27c6cb 8-13,43,51,69-72
+packages/ai-agent/src/tools/site-config.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-13,18-19,22-25,28-30,34-35,38-41,44-46,49-50,53-56,59-62
+packages/ai-agent/src/tools/oss.tool.ts
+  64142c1c3a27c6cb 2-3,5-7,10-12,14
+packages/ai-agent/src/tools/post.tool.ts
+  64142c1c3a27c6cb 2-3,8-10,15-17,26-29,33-39,42-44,51-54,58-60,68-69,71-73,76-84,87-90,93-96,99-102,105-108
+apps/server/src/config/database.config.ts
+  64142c1c3a27c6cb 17
+apps/server/src/modules/ai/ai.service.ts
+  64142c1c3a27c6cb 133-136,147
+packages/ai-agent/src/tools/types.ts
+  64142c1c3a27c6cb 2-96,99-113,131-132
+packages/ai-agent/src/tools/visitor.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-14,17-20
+packages/ai-agent/src/tools/helper.ts
+  64142c1c3a27c6cb 1-26
+packages/ai-agent/src/tools/friend-link.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-14,17-20,23-26
+packages/ai-agent/src/tools/writing.tool.ts
+  64142c1c3a27c6cb 4,6,12,25-27,30-39,42-45,48-51,54-57,60-65,67-68,71-74,77-80,83-86,89-92
+packages/ai-agent/src/agent/checkpointer.ts
+  64142c1c3a27c6cb 1,40-42,62,67-69
+packages/ai-agent/src/tools/guest-message.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-14,17-20
+packages/ai-agent/src/tools/tag.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-16,20-23,25-27,30-36
+packages/ai-agent/src/tools/changelog.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-16,20-23
+packages/ai-agent/src/agent/chat-model.ts
+  64142c1c3a27c6cb 4
+packages/ai-agent/src/tools/data-transfer.tool.ts
+  64142c1c3a27c6cb 2-3,5-8,11-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "0d90ebb75e78c3acb61d376ad8778444575bf9b5",
+  "prompts": {
+    "64142c1c3a27c6cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c64c5b-3092-4536-84c4-660e78d20f36",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 507,
+      "total_deletions": 825,
+      "accepted_lines": 1027,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/6af8a36c557717e2d5050f83ef5f1ee14a7e47b2e18d36fc83d09f36304ac10a"
+    }
+  }
+}
