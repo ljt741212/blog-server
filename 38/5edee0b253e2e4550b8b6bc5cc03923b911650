@@ -1,0 +1,116 @@
+packages/ai-agent/src/tools/announcement.tool.ts
+  8930eeb77c5dc5cd 1-2,4-45
+packages/ai-agent/src/agent/state.ts
+  8930eeb77c5dc5cd 1-9
+packages/ai-agent/src/tools/site-config.tool.ts
+  8930eeb77c5dc5cd 1-2,4-114
+packages/ai-agent/tsconfig.json
+  8930eeb77c5dc5cd 1-24
+packages/ai-agent/src/tools/post.tool.ts
+  8930eeb77c5dc5cd 1-2,4-166
+apps/server/src/modules/ai/conversation.entity.ts
+  8930eeb77c5dc5cd 1-45
+packages/ai-agent/src/agent/graph.ts
+  8930eeb77c5dc5cd 1-6,11-38
+apps/server/src/modules/setting/setting.module.ts
+  8930eeb77c5dc5cd 14
+packages/ai-agent/src/tools/oss.tool.ts
+  8930eeb77c5dc5cd 1-2,4-18
+packages/ai-agent/src/agent/chat-model.ts
+  8930eeb77c5dc5cd 1-3,5-39
+pnpm-workspace.yaml
+  8930eeb77c5dc5cd 1-4
+apps/server/src/modules/ai/ai.controller.ts
+  8930eeb77c5dc5cd 10-166
+packages/ai-agent/src/prompts/writing.ts
+  8930eeb77c5dc5cd 1-31
+packages/ai-agent/src/tools/tag.tool.ts
+  8930eeb77c5dc5cd 1-2,4-67
+packages/ai-agent/src/tools/comment.tool.ts
+  8930eeb77c5dc5cd 1-2,4-79
+packages/ai-agent/src/tools/visitor.tool.ts
+  8930eeb77c5dc5cd 1-2,4-42
+packages/ai-agent/src/agent/checkpointer.ts
+  8930eeb77c5dc5cd 1-75
+packages/ai-agent/src/tools/types.ts
+  8930eeb77c5dc5cd 1-37
+packages/ai-agent/src/tools/category.tool.ts
+  8930eeb77c5dc5cd 1-2,4-67
+.gitignore
+  h_43baef36f8cf46 4,6-7,9
+  64142c1c3a27c6cb 5,8,47-49,63-70
+apps/server/src/modules/ai/ai.service.ts
+  8930eeb77c5dc5cd 1-209,211-507
+  64142c1c3a27c6cb 210
+packages/ai-agent/src/index.ts
+  8930eeb77c5dc5cd 10-14,19-29
+packages/ai-agent/src/tools/friend-link.tool.ts
+  8930eeb77c5dc5cd 1-2,4-53
+packages/ai-agent/src/prompts/system.ts
+  8930eeb77c5dc5cd 1-49
+packages/ai-agent/src/tools/index.ts
+  8930eeb77c5dc5cd 1,3,5-11,13-17,19-23,25-30,32-36,38-42,44-48,50-54,56-62,64-68,70-71,73-74,76-83,85-150
+packages/ai-agent/src/agent/nodes.ts
+  8930eeb77c5dc5cd 1-5,7-83
+apps/server/src/modules/ai/ai.module.ts
+  8930eeb77c5dc5cd 1-49
+apps/server/src/modules/data-transfer/data-transfer.module.ts
+  8930eeb77c5dc5cd 14
+packages/ai-agent/src/tools/writing.tool.ts
+  8930eeb77c5dc5cd 1-3,6-10,12-189
+packages/ai-agent/src/tools/guest-message.tool.ts
+  8930eeb77c5dc5cd 1-2,4-45
+packages/ai-agent/src/tools/data-transfer.tool.ts
+  8930eeb77c5dc5cd 1-2,4-29
+package.json
+  8930eeb77c5dc5cd 2,5-10,12
+apps/server/package.json
+  8930eeb77c5dc5cd 22-33
+packages/ai-agent/src/tools/changelog.tool.ts
+  8930eeb77c5dc5cd 1-2,4-46
+packages/ai-agent/package.json
+  8930eeb77c5dc5cd 1-5,8-13,15-19
+  64142c1c3a27c6cb 6-7
+apps/server/src/modules/ai/ai.dto.ts
+  8930eeb77c5dc5cd 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "385edee0b253e2e4550b8b6bc5cc03923b911650",
+  "prompts": {
+    "64142c1c3a27c6cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c64c5b-3092-4536-84c4-660e78d20f36",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 11,
+      "accepted_lines": 16,
+      "overriden_lines": 3,
+      "messages_url": "https://git-ai.hsjdata.com/cas/2209b1a50810d8719497ef8532a5019e9bd06b76512aad01b5a9aa06a703b989"
+    },
+    "8930eeb77c5dc5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "218ec6f6-87fa-4ef4-8872-949d82521ec9",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 4989,
+      "total_deletions": 1133,
+      "accepted_lines": 2178,
+      "overriden_lines": 49,
+      "messages_url": "https://git-ai.hsjdata.com/cas/1b79e20c18f56960e94683709e48fda2ce31ee249d742ef96837bbed26c30da2"
+    }
+  },
+  "humans": {
+    "h_43baef36f8cf46": {
+      "author": "lijintao"
+    }
+  }
+}
