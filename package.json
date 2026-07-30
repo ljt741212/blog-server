@@ -8,5 +8,8 @@
     "lint": "pnpm --filter server lint",
     "test": "pnpm --filter server test",
     "test:e2e": "pnpm --filter server test:e2e"
+  },
+  "dependencies": {
+    "@blog/ai-agent": "workspace:*"
   }
 }

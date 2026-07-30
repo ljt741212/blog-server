@@ -30,7 +30,6 @@
     "schema:drop": "npm run build && npm run typeorm schema:drop -d ./dist/config/data-source.js"
   },
   "dependencies": {
-    "@blog/ai-agent": "workspace:*",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^11.0.1",
