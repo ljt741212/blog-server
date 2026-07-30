@@ -4,9 +4,9 @@ import { StructuredTool } from "@langchain/core/tools";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { BaseCheckpointSaver } from "@langchain/langgraph-checkpoint";
 
-import { AgentState } from "./state.js";
-import { makeCallAgent, makeExecuteTool } from "./nodes.js";
-import { createChatModel } from "./chat-model.js";
+import { AgentState } from "./state";
+import { makeCallAgent, makeExecuteTool } from "./nodes";
+import { createChatModel } from "./chat-model";
 import type { LlmConfig } from "../tools/types.js";
 
 export interface BuildAgentOptions {

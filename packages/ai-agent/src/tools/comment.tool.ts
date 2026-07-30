@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
-import type { ToolServices } from "./types.js";
+import type { ToolServices } from "./types";
 
 // ---- get_comments ----
 export function createGetCommentsTool(services: ToolServices): StructuredTool {

@@ -1,7 +1,7 @@
 import { StructuredTool } from "@langchain/core/tools";
-import type { ToolFactory, ToolServices } from "./types.js";
+import type { ToolFactory, ToolServices } from "./types";
 
-export { type ToolFactory, type ToolServices, type LlmConfig, type AgentConfig } from "./types.js";
+export { type ToolFactory, type ToolServices, type LlmConfig, type AgentConfig } from "./types";
 
 // ---- post (9) ----
 import {
@@ -9,50 +9,50 @@ import {
   createUpdatePostTool, createDeletePostTool,
   createPublishPostTool, createUnpublishPostTool,
   createTopPostTool, createUntopPostTool,
-} from "./post.tool.js";
+} from "./post.tool";
 
 // ---- category (4) ----
 import {
   createGetCategoriesTool, createCreateCategoryTool,
   createUpdateCategoryTool, createDeleteCategoryTool,
-} from "./category.tool.js";
+} from "./category.tool";
 
 // ---- tag (4) ----
 import {
   createGetTagsTool, createCreateTagTool,
   createUpdateTagTool, createDeleteTagTool,
-} from "./tag.tool.js";
+} from "./tag.tool";
 
 // ---- comment (5) ----
 import {
   createGetCommentsTool, createApproveCommentTool,
   createRejectCommentTool, createReplyCommentTool,
   createDeleteCommentTool,
-} from "./comment.tool.js";
+} from "./comment.tool";
 
 // ---- friend-link (4) ----
 import {
   createGetFriendLinksTool, createApproveFriendLinkTool,
   createRejectFriendLinkTool, createDeleteFriendLinkTool,
-} from "./friend-link.tool.js";
+} from "./friend-link.tool";
 
 // ---- guest-message (3) ----
 import {
   createGetGuestMessagesTool, createReplyGuestMessageTool,
   createDeleteGuestMessageTool,
-} from "./guest-message.tool.js";
+} from "./guest-message.tool";
 
 // ---- announcement (3) ----
 import {
   createGetAnnouncementsTool, createCreateAnnouncementTool,
   createDeleteAnnouncementTool,
-} from "./announcement.tool.js";
+} from "./announcement.tool";
 
 // ---- changelog (3) ----
 import {
   createGetChangelogsTool, createCreateChangelogTool,
   createDeleteChangelogTool,
-} from "./changelog.tool.js";
+} from "./changelog.tool";
 
 // ---- site-config (8) ----
 import {
@@ -60,19 +60,19 @@ import {
   createGetSeoSettingsTool, createUpdateSeoSettingsTool,
   createGetIcpInfoTool, createUpdateIcpInfoTool,
   createGetSettingTool, createUpdateSettingTool,
-} from "./site-config.tool.js";
+} from "./site-config.tool";
 
 // ---- visitor (3) ----
 import {
   createGetVisitorDashboardTool, createGetVisitorLogsTool,
   createGetOnlineVisitorsTool,
-} from "./visitor.tool.js";
+} from "./visitor.tool";
 
 // ---- data-transfer (2) ----
-import { createExportDataTool, createImportDataTool } from "./data-transfer.tool.js";
+import { createExportDataTool, createImportDataTool } from "./data-transfer.tool";
 
 // ---- oss (1) ----
-import { createGetOssSignUrlTool } from "./oss.tool.js";
+import { createGetOssSignUrlTool } from "./oss.tool";
 
 // ---- writing (10) ----
 import {
@@ -81,7 +81,7 @@ import {
   createGenerateOutlineTool, createSuggestTagsTool,
   createGenerateSeoMetaTool, createReviewArticleTool,
   createTranslateTextTool, createImitateStyleTool,
-} from "./writing.tool.js";
+} from "./writing.tool";
 
 // ---- Registry ----
 

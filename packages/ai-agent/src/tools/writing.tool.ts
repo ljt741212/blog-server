@@ -2,7 +2,7 @@ import { z } from "zod";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { StructuredTool } from "@langchain/core/tools";
 import { createChatModel } from "../agent/chat-model.js";
-import type { ToolServices, LlmConfig } from "./types.js";
+import type { ToolServices, LlmConfig } from "./types";
 import {
   CONTINUE_WRITE_PROMPT, POLISH_PROMPTS, SUMMARIZE_PROMPT,
   GENERATE_TITLE_PROMPT, GENERATE_OUTLINE_PROMPT, SUGGEST_TAGS_PROMPT,

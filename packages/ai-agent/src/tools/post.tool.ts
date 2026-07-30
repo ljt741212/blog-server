@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
-import type { ToolServices } from "./types.js";
+import type { ToolServices } from "./types";
 
 function mapPost(p: Record<string, unknown>) {
   return {

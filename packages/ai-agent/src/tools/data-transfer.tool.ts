@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
-import type { ToolServices } from "./types.js";
+import type { ToolServices } from "./types";
 
 export function createExportDataTool(services: ToolServices): StructuredTool {
   return new (class extends StructuredTool {

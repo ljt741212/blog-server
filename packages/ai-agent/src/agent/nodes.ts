@@ -3,7 +3,7 @@ import { RunnableConfig } from "@langchain/core/runnables";
 import { StructuredTool } from "@langchain/core/tools";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { interrupt } from "@langchain/langgraph";
-import { AgentState } from "./state.js";
+import { AgentState } from "./state";
 
 const CONFIRM_MESSAGES: Record<string, (a: Record<string, unknown>) => string> = {
   delete_post: (a) => `确认删除文章 #${a.id}？此操作不可恢复。`,
