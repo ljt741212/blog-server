@@ -1,42 +1,21 @@
 import { z } from "zod";
-import { StructuredTool } from "@langchain/core/tools";
-import type { ToolServices } from "./types";
+import { ToolServices } from "./types";
+import { createTool, success } from "./helper";
 
-export function createGetVisitorDashboardTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "get_visitor_dashboard";
-    description = "查看访问仪表盘数据，包括 PV、UV、今日访问量、趋势图数据等。";
-    schema = z.object({});
-    async _call() {
-      const data = await services.visitorService.getDashboard();
-      return JSON.stringify(data);
-    }
-  })();
+export function createGetVisitorDashboardTool(svc: ToolServices) {
+  return createTool("get_visitor_dashboard", "查看访问仪表盘数据，包括 PV、UV、今日访问量、趋势图数据等。",
+    z.object({}),
+    () => svc.visitorService.getDashboard().then(JSON.stringify));
 }
 
-export function createGetVisitorLogsTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "get_visitor_logs";
-    description = "查看访问记录，支持分页。";
-    schema = z.object({
-      page: z.number().optional().default(1),
-      limit: z.number().optional().default(20),
-    });
-    async _call(args: z.infer<typeof this.schema>) {
-      const result = await services.visitorService.findPage({ page: args.page, limit: args.limit });
-      return JSON.stringify(result);
-    }
-  })();
+export function createGetVisitorLogsTool(svc: ToolServices) {
+  return createTool("get_visitor_logs", "查看访问记录，支持分页。",
+    z.object({ page: z.number().optional().default(1), limit: z.number().optional().default(20) }),
+    (args) => svc.visitorService.findPage(args).then(JSON.stringify));
 }
 
-export function createGetOnlineVisitorsTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "get_online_visitors";
-    description = "查看当前在线访客人数。";
-    schema = z.object({});
-    async _call() {
-      const count = await services.visitorService.getOnlineCount();
-      return JSON.stringify({ onlineCount: count });
-    }
-  })();
+export function createGetOnlineVisitorsTool(svc: ToolServices) {
+  return createTool("get_online_visitors", "查看当前在线访客人数。",
+    z.object({}),
+    async () => JSON.stringify({ onlineCount: await svc.visitorService.getOnlineCount() }));
 }

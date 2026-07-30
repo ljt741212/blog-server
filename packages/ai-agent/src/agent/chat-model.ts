@@ -1,7 +1,7 @@
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
-import type { LlmConfig } from "../tools/types.js";
+import type { LlmConfig } from "../tools/types";
 
 const PROVIDER_DEFAULTS: Record<string, string> = {
   openai: "https://api.openai.com/v1",

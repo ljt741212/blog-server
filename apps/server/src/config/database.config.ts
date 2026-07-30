@@ -14,6 +14,7 @@ const dataSourceOptions: DataSourceOptions = {
   username: env('DB_USERNAME', 'root'),
   password: env('DB_PASSWORD'),
   database: env('DB_DATABASE', 'blog_db'),
+  charset: 'utf8mb4',
   synchronize: envBoolean('DB_SYNCHRONIZE', false),
   multipleStatements: true,
   entities: ['dist/modules/**/*.entity{.ts,.js}'],

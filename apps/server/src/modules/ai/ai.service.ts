@@ -130,8 +130,10 @@ export class AiService {
     const conversation = await this.getOrCreateConversation(conversationId, userId);
     const agent = await this.getOrCreateAgent();
 
-    const systemMsg = new SystemMessage(SYSTEM_PROMPT);
-    const userMsg = new HumanMessage(message);
+    const isNew = !conversation.checkpoint;
+    const messages: any[] = isNew
+      ? [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(message)]
+      : [new HumanMessage(message)];
 
     const callbacks = [
       {
@@ -142,7 +144,7 @@ export class AiService {
     ];
 
     const stream = await agent.stream(
-      { messages: [systemMsg, userMsg] },
+      { messages },
       {
         configurable: { thread_id: String(conversation.id), sseEmitter },
         callbacks,

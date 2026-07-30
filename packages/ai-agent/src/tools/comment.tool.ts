@@ -1,79 +1,38 @@
 import { z } from "zod";
-import { StructuredTool } from "@langchain/core/tools";
-import type { ToolServices } from "./types";
+import { ToolServices } from "./types";
+import { createTool, success } from "./helper";
 
-// ---- get_comments ----
-export function createGetCommentsTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "get_comments";
-    description = "查询评论列表。支持按文章ID、状态、时间范围筛选。";
-    schema = z.object({
+export function createGetCommentsTool(svc: ToolServices) {
+  return createTool("get_comments", "查询评论列表。支持按文章ID、状态筛选。",
+    z.object({
       postId: z.number().optional().describe("文章ID"),
       status: z.enum(["pending", "approved", "rejected", "all"]).optional().default("all"),
       page: z.number().optional().default(1),
       limit: z.number().optional().default(20),
-    });
-    async _call(args: z.infer<typeof this.schema>) {
-      const result = await services.commentService.findPage({
-        postId: args.postId, status: args.status,
-        page: args.page, limit: args.limit,
-      });
-      return JSON.stringify(result);
-    }
-  })();
+    }),
+    (args) => svc.commentService.findPage(args).then(JSON.stringify));
 }
 
-// ---- approve_comment ----
-export function createApproveCommentTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "approve_comment";
-    description = "审核通过评论。";
-    schema = z.object({ id: z.number().describe("评论ID") });
-    async _call(args: z.infer<typeof this.schema>) {
-      await services.commentService.approve(args.id);
-      return JSON.stringify({ success: true, message: `评论 #${args.id} 已通过` });
-    }
-  })();
+export function createApproveCommentTool(svc: ToolServices) {
+  return createTool("approve_comment", "审核通过评论。",
+    z.object({ id: z.number().describe("评论ID") }),
+    async (args) => { await svc.commentService.approve(args.id); return success(`评论 #${args.id} 已通过`); });
 }
 
-// ---- reject_comment ----
-export function createRejectCommentTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "reject_comment";
-    description = "拒绝评论。";
-    schema = z.object({ id: z.number().describe("评论ID") });
-    async _call(args: z.infer<typeof this.schema>) {
-      await services.commentService.reject(args.id);
-      return JSON.stringify({ success: true, message: `评论 #${args.id} 已拒绝` });
-    }
-  })();
+export function createRejectCommentTool(svc: ToolServices) {
+  return createTool("reject_comment", "拒绝评论。",
+    z.object({ id: z.number().describe("评论ID") }),
+    async (args) => { await svc.commentService.reject(args.id); return success(`评论 #${args.id} 已拒绝`); });
 }
 
-// ---- reply_comment ----
-export function createReplyCommentTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "reply_comment";
-    description = "回复评论。";
-    schema = z.object({
-      id: z.number().describe("要回复的评论ID"),
-      content: z.string().describe("回复内容"),
-    });
-    async _call(args: z.infer<typeof this.schema>) {
-      await services.commentService.reply(args.id, args.content);
-      return JSON.stringify({ success: true, message: `已回复评论 #${args.id}` });
-    }
-  })();
+export function createReplyCommentTool(svc: ToolServices) {
+  return createTool("reply_comment", "回复评论。",
+    z.object({ id: z.number().describe("要回复的评论ID"), content: z.string().describe("回复内容") }),
+    async (args) => { await svc.commentService.reply(args.id, args.content); return success(`已回复评论 #${args.id}`); });
 }
 
-// ---- delete_comment ----
-export function createDeleteCommentTool(services: ToolServices): StructuredTool {
-  return new (class extends StructuredTool {
-    name = "delete_comment";
-    description = "删除评论。";
-    schema = z.object({ id: z.number().describe("评论ID") });
-    async _call(args: z.infer<typeof this.schema>) {
-      await services.commentService.delete(args.id);
-      return JSON.stringify({ success: true, message: `评论 #${args.id} 已删除` });
-    }
-  })();
+export function createDeleteCommentTool(svc: ToolServices) {
+  return createTool("delete_comment", "删除评论。",
+    z.object({ id: z.number().describe("评论ID") }),
+    async (args) => { await svc.commentService.delete(args.id); return success(`评论 #${args.id} 已删除`); });
 }

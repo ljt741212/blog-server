@@ -5,6 +5,12 @@ import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { interrupt } from "@langchain/langgraph";
 import { AgentState } from "./state";
 
+interface SseEmitter {
+  emitToolCall(name: string, args: Record<string, unknown>): void;
+  emitToolResult(name: string, result: unknown): void;
+  emitConfirm(name: string, args: Record<string, unknown>, message: string): void;
+}
+
 const CONFIRM_MESSAGES: Record<string, (a: Record<string, unknown>) => string> = {
   delete_post: (a) => `确认删除文章 #${a.id}？此操作不可恢复。`,
   delete_category: (a) => `确认删除分类 #${a.id}？若分类下有文章将无法删除。`,
@@ -34,13 +40,7 @@ export function makeExecuteTool(tools: StructuredTool[], dangerousToolNames: Set
   return async (state: typeof AgentState.State, config: RunnableConfig) => {
     const lastMessage = state.messages[state.messages.length - 1];
     const toolCalls = (lastMessage as AIMessage).tool_calls ?? [];
-    const emit = config.configurable?.sseEmitter as
-      | {
-          emitToolCall(name: string, args: Record<string, unknown>): void;
-          emitToolResult(name: string, result: unknown): void;
-          emitConfirm(name: string, args: Record<string, unknown>, message: string): void;
-        }
-      | undefined;
+    const emit = config.configurable?.sseEmitter as SseEmitter | undefined;
 
     const results: ToolMessage[] = [];
 
@@ -48,11 +48,7 @@ export function makeExecuteTool(tools: StructuredTool[], dangerousToolNames: Set
       if (dangerousToolNames.has(tc.name)) {
         emit?.emitConfirm(tc.name, tc.args, confirmMessage(tc.name, tc.args));
 
-        const decision = (interrupt({
-          type: "confirm",
-          toolName: tc.name,
-          toolArgs: tc.args,
-        }) ?? { confirm: false }) as { confirm: boolean };
+        const decision = (interrupt({ type: "confirm", toolName: tc.name, toolArgs: tc.args }) ?? { confirm: false }) as { confirm: boolean };
 
         if (!decision.confirm) {
           results.push(new ToolMessage({ tool_call_id: tc.id!, content: "用户取消了此操作" }));
@@ -70,12 +66,10 @@ export function makeExecuteTool(tools: StructuredTool[], dangerousToolNames: Set
       const raw = await tool.invoke(tc.args);
       emit?.emitToolResult(tc.name, raw);
 
-      results.push(
-        new ToolMessage({
-          tool_call_id: tc.id!,
-          content: typeof raw === "string" ? raw : JSON.stringify(raw),
-        }),
-      );
+      results.push(new ToolMessage({
+        tool_call_id: tc.id!,
+        content: typeof raw === "string" ? raw : JSON.stringify(raw),
+      }));
     }
 
     return { messages: results };

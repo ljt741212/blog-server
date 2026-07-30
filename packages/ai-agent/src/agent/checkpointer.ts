@@ -1,4 +1,4 @@
-import { BaseCheckpointSaver } from "@langchain/langgraph-checkpoint";
+import { BaseCheckpointSaver, Checkpoint, CheckpointMetadata, ChannelVersions, CheckpointTuple, CheckpointListOptions } from "@langchain/langgraph-checkpoint";
 import { RunnableConfig } from "@langchain/core/runnables";
 
 export interface CheckpointRepo {
@@ -37,9 +37,9 @@ export class MySQLCheckpointer extends BaseCheckpointSaver {
 
   async put(
     config: RunnableConfig,
-    checkpoint: unknown,
-    metadata: unknown,
-    _newVersions: unknown,
+    checkpoint: Checkpoint,
+    metadata: CheckpointMetadata,
+    _newVersions: ChannelVersions,
   ): Promise<RunnableConfig> {
     const threadId = config.configurable?.thread_id;
     if (!threadId) return config;
@@ -59,14 +59,14 @@ export class MySQLCheckpointer extends BaseCheckpointSaver {
     _writes: unknown[],
     _taskId: string,
   ): Promise<void> {
-    // Not needed for our use case — writes are ephemeral
+    // writes are ephemeral — not needed for our use case
   }
 
   async *list(
     _config: RunnableConfig,
-    _options?: unknown,
-  ): AsyncGenerator<any, any, any> {
-    // Yield nothing — not needed for our use case
+    _options?: CheckpointListOptions,
+  ): AsyncGenerator<CheckpointTuple> {
+    // not needed for our use case
   }
 
   async deleteThread(_threadId: string): Promise<void> {
