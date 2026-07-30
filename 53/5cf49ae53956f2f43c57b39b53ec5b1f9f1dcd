@@ -1,0 +1,24 @@
+package.json
+  64142c1c3a27c6cb 11-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "535cf49ae53956f2f43c57b39b53ec5b1f9f1dcd",
+  "prompts": {
+    "64142c1c3a27c6cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c64c5b-3092-4536-84c4-660e78d20f36",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 1,
+      "accepted_lines": 142,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/0d4244d20636ef2672b210430ca65648431d8f2915aea072f0ecb7650ccec6d1"
+    }
+  }
+}
