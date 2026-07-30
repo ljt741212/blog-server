@@ -1,0 +1,24 @@
+packages/ai-agent/src/prompts/system.ts
+  7880d7062622acaf 39-41,54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "948851fe3816f237b1888af30c732755ff4e9896",
+  "prompts": {
+    "7880d7062622acaf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83e31632-3f5c-4f4b-8d7a-ad60cef37955",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 6,
+      "total_deletions": 5,
+      "accepted_lines": 10,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/e38228ffc7e4a1f018855159681288ada9de527007ef09e9348021e7512dfcb3"
+    }
+  }
+}
