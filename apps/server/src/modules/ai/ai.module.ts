@@ -18,14 +18,16 @@ import { DataTransferModule } from "@/modules/data-transfer/data-transfer.module
 import { OssModule } from "@/modules/oss/oss.module";
 
 import { AiConfig } from "./ai-config.entity";
+import { AiMemory } from "./ai-memory.entity";
 import { AiUsage } from "./ai-usage.entity";
 import { Conversation } from "./conversation.entity";
 import { AiController } from "./ai.controller";
 import { AiService } from "./ai.service";
+import { MemoryService } from "./memory.service";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AiConfig, AiUsage, Conversation]),
+    TypeOrmModule.forFeature([AiConfig, AiMemory, AiUsage, Conversation]),
     PostModule,
     CategoryModule,
     TagModule,
@@ -43,7 +45,7 @@ import { AiService } from "./ai.service";
     OssModule,
   ],
   controllers: [AiController],
-  providers: [AiService],
+  providers: [AiService, MemoryService],
   exports: [AiService],
 })
 export class AiModule {}

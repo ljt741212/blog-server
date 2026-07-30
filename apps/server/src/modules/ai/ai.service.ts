@@ -24,7 +24,6 @@ import { OssService } from "@/modules/oss/oss.service";
 
 import {
   createAgent,
-  MySQLCheckpointer,
   RedisCheckpointer,
   SYSTEM_PROMPT,
   HumanMessage,
@@ -40,6 +39,7 @@ import Redis from "ioredis";
 import { AiConfig } from "./ai-config.entity";
 import { AiAction, AiUsage } from "./ai-usage.entity";
 import { Conversation } from "./conversation.entity";
+import { MemoryService } from "./memory.service";
 import { SaveAiConfigDto, UsageQueryDto } from "./ai.dto";
 
 function errMsg(err: unknown): string {
@@ -103,6 +103,7 @@ export class AiService {
   private tempAgentCache: { configId: number; agent: ReturnType<typeof createAgent> } | null = null;
   private redis: Redis | null = null;
   private requestAuth: string = "";
+  private requestUserId: number = 0;
 
   constructor(
     @InjectRepository(AiConfig) private readonly configRepo: Repository<AiConfig>,
@@ -123,6 +124,7 @@ export class AiService {
     private readonly visitorService: VisitorService,
     private readonly dataTransferService: DataTransferService,
     private readonly ossService: OssService,
+    private readonly memoryService: MemoryService,
   ) {}
 
   // ==================== Agent Chat ====================
@@ -136,6 +138,7 @@ export class AiService {
     temporary: boolean = false,
   ) {
     this.requestAuth = authHeader;
+    this.requestUserId = userId;
     const startTime = Date.now();
 
     // Input validation: reject messages over 8000 chars (~2000 tokens)
@@ -316,27 +319,7 @@ export class AiService {
         "delete_comment", "delete_friend_link", "delete_guest_message",
         "delete_announcement", "delete_changelog", "import_data",
       ],
-      checkpointer: new MySQLCheckpointer({
-        findCheckpoint: async (threadId: string) => {
-          const row = await this.conversationRepo.findOne({ where: { id: Number(threadId) } });
-          if (!row?.checkpoint) return null;
-          return {
-            checkpoint: row.checkpoint,
-            metadata: JSON.stringify(row.checkpointMetadata ?? {}),
-            config: (row.checkpointConfig ?? {}) as unknown as Record<string, unknown>,
-          };
-        },
-        upsertCheckpoint: async (data) => {
-          await this.conversationRepo.update(
-            { id: Number(data.threadId) },
-            {
-              checkpoint: data.checkpoint,
-              checkpointMetadata: JSON.parse(data.metadata),
-              checkpointConfig: JSON.stringify(data.config),
-            },
-          );
-        },
-      }),
+      checkpointer: new RedisCheckpointer(this.getRedis(), "conv_checkpoint:", 86400 * 7),
     });
 
     this.agentCache = { configId: activeConfig.id, agent };
@@ -388,8 +371,10 @@ export class AiService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const asDto = <T>(args: Record<string, unknown>): T => args as unknown as T;
     const auth = () => this.requestAuth;
+    const getUserId = () => this.requestUserId;
 
     return {
+      getUserId,
       postService: {
         findPage: (args) => this.postService.paginateForAdmin(asDto(args)),
         findOne: (id) => this.postService.findOne(id),
@@ -479,6 +464,12 @@ export class AiService {
         },
         del: (key) => this.getRedis().del(key).then(() => {}),
         keys: (pattern) => this.getRedis().keys(pattern),
+      },
+      memoryService: {
+        add: (input) => this.memoryService.add(input),
+        search: (input) => this.memoryService.search(input),
+        forget: (input) => this.memoryService.forget(input),
+        summary: (userId) => this.memoryService.summary(userId),
       },
     };
   }

@@ -151,6 +151,13 @@ export interface OssService {
   signUrl(key: string): string;
 }
 
+export interface MemoryService {
+  add(input: { userId: number; content: string; importance: number }): Promise<{ id: number }>;
+  search(input: { userId: number; query: string; limit: number }): Promise<Array<{ id: number; content: string; importance: number; createdAt: string }>>;
+  forget(input: { userId: number; strategy: "importance_based" | "time_based" | "capacity_based"; threshold?: number; maxAgeDays?: number }): Promise<{ deleted: number }>;
+  summary(userId: number): Promise<{ total: number; avgImportance: string }>;
+}
+
 export interface RedisService {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, ttlSeconds?: number): Promise<void>;
@@ -159,6 +166,7 @@ export interface RedisService {
 }
 
 export interface ToolServices {
+  getUserId(): number;
   postService: PostService;
   categoryService: CategoryService;
   tagService: TagService;
@@ -174,6 +182,7 @@ export interface ToolServices {
   visitorService: VisitorService;
   dataTransferService: DataTransferService;
   ossService: OssService;
+  memoryService: MemoryService;
   redisService: RedisService;
 }
 
