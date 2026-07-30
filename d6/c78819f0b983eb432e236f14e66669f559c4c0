@@ -1,0 +1,93 @@
+packages/ai-agent/src/tools/memory.tool.ts
+  7880d7062622acaf 1-249
+packages/ai-agent/src/tools/types.ts
+  7880d7062622acaf 104-108,127
+  64142c1c3a27c6cb 4-9,11-19,23-26,30-33,37-41,45-48,52-54,58-60,64-66,70-71,75-76,80-81,85-86,90-92,96-97,101,146
+apps/server/src/modules/ai/ai.controller.ts
+  64142c1c3a27c6cb 44,157-158
+packages/ai-agent/src/context/types.ts
+  7880d7062622acaf 1-27
+packages/ai-agent/src/context/context-manager.ts
+  7880d7062622acaf 1-213
+packages/ai-agent/src/index.ts
+  7880d7062622acaf 12-17,31
+  825dda7d7ceed03d 27
+  64142c1c3a27c6cb 6,21
+apps/server/src/modules/ai/ai.dto.ts
+  64142c1c3a27c6cb 67-72
+packages/ai-agent/src/agent/state.ts
+  7880d7062622acaf 4-10,16-31
+apps/server/src/modules/ai/ai.service.ts
+  64142c1c3a27c6cb 29,37,51,98-99,127,131,142,144-148,172,184,213-228,230-232,234,340-380,472-473
+  7880d7062622acaf 40,134,136-141,143,150-151,158-160,166-171,176-183,185-212,236-243,245-247,249-252,267-274,276-278,280-285,474-483,548,562,567,582-591,600-619
+  825dda7d7ceed03d 543-547,549-561,563-566,568-581
+packages/ai-agent/src/agent/redis-checkpointer.ts
+  64142c1c3a27c6cb 1-84
+packages/ai-agent/src/context/token-counter.ts
+  7880d7062622acaf 1-86
+packages/ai-agent/src/context/compressor.ts
+  7880d7062622acaf 1-93
+packages/ai-agent/src/agent/graph.ts
+  7880d7062622acaf 10,24-25,27-28,41
+packages/ai-agent/src/tools/note.tool.ts
+  7880d7062622acaf 1-171
+packages/ai-agent/src/tools/index.ts
+  7880d7062622acaf 86-96,145-149
+packages/ai-agent/src/prompts/system.ts
+  7880d7062622acaf 38-46,54-55
+packages/ai-agent/src/tools/deep-task.tool.ts
+  7880d7062622acaf 1-160
+packages/ai-agent/src/context/index.ts
+  7880d7062622acaf 1-6
+packages/ai-agent/src/agent/nodes.ts
+  7880d7062622acaf 4,7-8,32-64,66-101,105-111,141,144,150-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "d6c78819f0b983eb432e236f14e66669f559c4c0",
+  "prompts": {
+    "64142c1c3a27c6cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c64c5b-3092-4536-84c4-660e78d20f36",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 312,
+      "total_deletions": 108,
+      "accepted_lines": 857,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/b88fb9470b2201e4bd9084a4495137ef63cf52f88b75e847d57831a731accf6e"
+    },
+    "7880d7062622acaf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "83e31632-3f5c-4f4b-8d7a-ad60cef37955",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 1544,
+      "total_deletions": 296,
+      "accepted_lines": 1303,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/3949640ca8ebe90985d940548a118ab88f20b29e838a07a065437e67be22aaef"
+    },
+    "825dda7d7ceed03d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7dbe7985-e7c9-4f2e-b251-a0bdaad87f12",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 37,
+      "total_deletions": 33,
+      "accepted_lines": 37,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/6669de365c9702674468099adcc3fc3d0386969bd981fea979bd3aba8a734368"
+    }
+  }
+}
