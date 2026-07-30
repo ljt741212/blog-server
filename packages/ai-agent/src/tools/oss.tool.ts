@@ -9,7 +9,7 @@ export function createGetOssSignUrlTool(svc: ToolServices) {
       expiresIn: z.number().optional().default(3600).describe("过期时间（秒），默认 3600"),
     }),
     async (args) => {
-      const url = await svc.ossService.getSignUrl(args.key, args.expiresIn);
+      const url = svc.ossService.signUrl(args.key);
       return JSON.stringify({ url, expiresIn: args.expiresIn });
     });
 }

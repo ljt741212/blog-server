@@ -53,11 +53,11 @@ export function createUpdateIcpInfoTool(svc: ToolServices) {
 export function createGetSettingTool(svc: ToolServices) {
   return createTool("get_setting", "查看全局设置。",
     z.object({}),
-    () => svc.settingService.get().then(JSON.stringify));
+    () => svc.settingService.getAll().then(JSON.stringify));
 }
 
 export function createUpdateSettingTool(svc: ToolServices) {
   return createTool("update_setting", "修改全局设置。",
     z.object({ key: z.string().describe("设置键"), value: z.string().describe("设置值") }),
-    async (args) => { await svc.settingService.update(args.key, args.value); return success(`设置 ${args.key} 已更新`); });
+    async (args) => { await svc.settingService.save({ [args.key]: args.value }); return success(`设置 ${args.key} 已更新`); });
 }

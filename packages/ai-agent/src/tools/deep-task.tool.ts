@@ -56,7 +56,7 @@ async function preFetchData(
       const posts = await svc.postService.findPage({ searchValue: q, pageSize: 3 });
       if (posts?.items?.length) {
         fetched[i] = posts.items
-          .map((p: any) => `[文章: ${p.title}] ${p.summary ?? ""}`.slice(0, 300))
+          .map((p) => `[文章: ${p.title}] ${p.summary ?? ""}`.slice(0, 300))
           .join("\n");
       }
     } catch {
@@ -150,8 +150,9 @@ export function createDeepTaskTool(svc: ToolServices): StructuredTool {
           subtaskCount: tasks.length,
           result: final,
         });
-      } catch (err: any) {
-        return error(`深度任务执行失败: ${err.message}`);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return error(`深度任务执行失败: ${msg}`);
       }
     },
   );

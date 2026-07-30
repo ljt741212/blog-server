@@ -1,104 +1,154 @@
 import { StructuredTool } from "@langchain/core/tools";
 import { BaseCheckpointSaver } from "@langchain/langgraph-checkpoint";
 
-// Service interfaces — return types are intentionally loose (Promise<any>)
-// because these are adapter interfaces that bridge the agent's generic
-// tool layer with the server's concrete NestJS service implementations.
-// Each service method signature is typed precisely for its parameters;
-// the return type is left as any since the tools treat results as opaque JSON.
+// ---- Server response shapes ----
+
+export interface PaginatedResult<T> {
+  items: T[];
+  meta: { total: number; current: number; pageSize: number };
+}
+
+export type PostStatus = "draft" | "published" | "archived";
+
+export interface PostAdminItem {
+  id: string;
+  title: string;
+  summary: string | null;
+  coverImage: string | null;
+  status: PostStatus;
+  isTop: boolean;
+  categoryId: number | undefined;
+  category: string | undefined;
+  tagIds: number[];
+  tags: string;
+  author: string | undefined;
+  publishTime: Date | null;
+  views: number;
+  likes: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CategoryItem {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
+export interface TagItem {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
+export type CommentStatus = "pending" | "approved" | "rejected";
+
+export interface AnnouncementItem {
+  id: number;
+  title: string;
+  content: string;
+}
+
+export interface ChangelogItem {
+  id: number;
+  title: string;
+  content: string;
+}
+
+// ---- Service interfaces ----
 
 export interface PostService {
-  findPage(args: Record<string, unknown>): Promise<any>;
-  findOne(id: number): Promise<any>;
-  create(args: Record<string, unknown>): Promise<any>;
-  update(id: number, args: Record<string, unknown>): Promise<any>;
-  delete(id: number): Promise<any>;
-  publish(id: number): Promise<any>;
-  unpublish(id: number): Promise<any>;
-  top(id: number): Promise<any>;
-  untop(id: number): Promise<any>;
+  findPage(args: Record<string, unknown>): Promise<PaginatedResult<PostAdminItem>>;
+  findOne(id: number): Promise<unknown>;
+  create(args: Record<string, unknown>): Promise<unknown>;
+  update(id: number, args: Record<string, unknown>): Promise<unknown>;
+  delete(id: number): Promise<unknown>;
+  publish(id: number): Promise<unknown>;
+  unpublish(id: number): Promise<unknown>;
+  top(id: number): Promise<unknown>;
+  untop(id: number): Promise<unknown>;
 }
 
 export interface CategoryService {
-  findAll(): Promise<any>;
-  create(args: Record<string, unknown>): Promise<any>;
-  update(id: number, args: Record<string, unknown>): Promise<any>;
-  delete(id: number): Promise<any>;
+  findAll(): Promise<CategoryItem[]>;
+  create(args: Record<string, unknown>): Promise<CategoryItem>;
+  update(id: number, args: Record<string, unknown>): Promise<unknown>;
+  delete(id: number): Promise<unknown>;
 }
 
 export interface TagService {
-  findAll(): Promise<any>;
-  create(args: Record<string, unknown>): Promise<any>;
-  update(id: number, args: Record<string, unknown>): Promise<any>;
-  delete(id: number): Promise<any>;
+  findAll(): Promise<TagItem[]>;
+  create(args: Record<string, unknown>): Promise<TagItem>;
+  update(id: number, args: Record<string, unknown>): Promise<unknown>;
+  delete(id: number): Promise<unknown>;
 }
 
 export interface CommentService {
-  findPage(args: Record<string, unknown>): Promise<any>;
-  approve(id: number): Promise<any>;
-  reject(id: number): Promise<any>;
-  reply(id: number, content: string): Promise<any>;
-  delete(id: number): Promise<any>;
+  findPage(args: Record<string, unknown>): Promise<unknown>;
+  approve(id: number): Promise<unknown>;
+  reject(id: number): Promise<unknown>;
+  reply(id: number, content: string): Promise<unknown>;
+  delete(id: number): Promise<unknown>;
 }
 
 export interface FriendLinkService {
-  findAll(status?: string): Promise<any>;
-  approve(id: number): Promise<any>;
-  reject(id: number): Promise<any>;
-  delete(id: number): Promise<any>;
+  findAll(status?: string): Promise<unknown>;
+  approve(id: number): Promise<unknown>;
+  reject(id: number): Promise<unknown>;
+  delete(id: number): Promise<unknown>;
 }
 
 export interface GuestMessageService {
-  findPage(args: Record<string, unknown>): Promise<any>;
-  reply(id: number, content: string): Promise<any>;
-  delete(id: number): Promise<any>;
+  findPage(args: Record<string, unknown>): Promise<unknown>;
+  reply(id: number, content: string): Promise<unknown>;
+  delete(id: number): Promise<unknown>;
 }
 
 export interface AnnouncementService {
-  findPage(args: Record<string, unknown>): Promise<any>;
-  create(args: Record<string, unknown>): Promise<any>;
-  delete(id: number): Promise<any>;
+  findPage(args: Record<string, unknown>): Promise<unknown>;
+  create(args: Record<string, unknown>): Promise<AnnouncementItem>;
+  delete(id: number): Promise<unknown>;
 }
 
 export interface ChangelogService {
-  findPage(args: Record<string, unknown>): Promise<any>;
-  create(args: Record<string, unknown>): Promise<any>;
-  delete(id: number): Promise<any>;
+  findPage(args: Record<string, unknown>): Promise<unknown>;
+  create(args: Record<string, unknown>): Promise<ChangelogItem>;
+  delete(id: number): Promise<unknown>;
 }
 
 export interface SiteConfigService {
-  get(): Promise<any>;
-  update(args: Record<string, unknown>): Promise<any>;
+  get(): Promise<unknown>;
+  update(args: Record<string, unknown>): Promise<unknown>;
 }
 
 export interface SeoSettingService {
-  getLatest(): Promise<any>;
-  create(args: Record<string, unknown>): Promise<any>;
+  getLatest(): Promise<unknown>;
+  create(args: Record<string, unknown>): Promise<unknown>;
 }
 
 export interface IcpInfoService {
-  getLatest(): Promise<any>;
-  create(args: Record<string, unknown>): Promise<any>;
+  getLatest(): Promise<unknown>;
+  create(args: Record<string, unknown>): Promise<unknown>;
 }
 
 export interface SettingService {
-  get(): Promise<any>;
-  update(key: string, value: string): Promise<any>;
+  getAll(): Promise<unknown>;
+  save(dto: Record<string, unknown>): Promise<unknown>;
 }
 
 export interface VisitorService {
-  getDashboard(): Promise<any>;
-  findPage(args: Record<string, unknown>): Promise<any>;
-  getOnlineCount(): Promise<any>;
+  getDashboardStats(): Promise<unknown>;
+  paginateForAdmin(args: Record<string, unknown>): Promise<unknown>;
+  getOnlineStats(): Promise<unknown>;
 }
 
 export interface DataTransferService {
-  export(): Promise<any>;
-  import(data: string): Promise<any>;
+  exportAllToZip(...args: unknown[]): Promise<unknown>;
+  importAllFromZip(data: string, options?: Record<string, unknown>): Promise<unknown>;
 }
 
 export interface OssService {
-  getSignUrl(key: string, expiresIn: number): Promise<any>;
+  signUrl(key: string): string;
 }
 
 export interface RedisService {

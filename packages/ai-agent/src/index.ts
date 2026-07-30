@@ -16,7 +16,7 @@ export { compactMessages, DEFAULT_CONTEXT_CONFIG } from "./context";
 export type { DecisionRecord } from "./agent/state";
 
 // Re-export LangChain types needed by consumers
-export { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
+export { HumanMessage, SystemMessage, AIMessage, BaseMessage } from "@langchain/core/messages";
 export { Command } from "@langchain/langgraph";
 export { MemorySaver } from "@langchain/langgraph-checkpoint";
 

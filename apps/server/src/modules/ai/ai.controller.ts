@@ -14,6 +14,10 @@ import {
 import { Throttle } from "@nestjs/throttler";
 import type { Request, Response } from "express";
 
+interface AuthRequest extends Request {
+  user?: { id: number; username: string; role?: number };
+}
+
 import { JwtAuthGuard, SuperAdminGuard } from "@/common";
 
 import { ChatDto, ConfirmDto, SaveAiConfigDto, UsageQueryDto } from "./ai.dto";
@@ -28,7 +32,7 @@ export class AiController {
   @Post("chat")
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60000, limit: 20 } })
-  async chat(@Body() dto: ChatDto, @Res() res: Response, @Req() req: Request) {
+  async chat(@Body() dto: ChatDto, @Res() res: Response, @Req() req: AuthRequest) {
     this.setupSse(res);
 
     const emitter = this.createSseEmitter(res);
@@ -38,13 +42,14 @@ export class AiController {
       await this.aiService.handleChat(
         dto.message,
         dto.conversationId ?? null,
-        (req as any).user?.id ?? 0,
+        req.user?.id ?? 0,
         authHeader,
         emitter,
         dto.temporary ?? false,
       );
-    } catch (error) {
-      emitter.emitError(error.message);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      emitter.emitError(msg);
     }
   }
 
@@ -63,8 +68,9 @@ export class AiController {
 
     try {
       await this.aiService.handleConfirm(conversationId, dto.confirm, emitter);
-    } catch (error) {
-      emitter.emitError(error.message);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      emitter.emitError(msg);
     }
   }
 
@@ -73,12 +79,12 @@ export class AiController {
   @Get("conversations")
   @UseGuards(JwtAuthGuard)
   async getConversations(
-    @Req() req: Request,
+    @Req() req: AuthRequest,
     @Query("page") page?: number,
     @Query("limit") limit?: number,
   ) {
     return this.aiService.getConversations(
-      (req as any).user?.id ?? 0,
+      req.user?.id ?? 0,
       page ?? 1,
       limit ?? 20,
     );
@@ -86,14 +92,14 @@ export class AiController {
 
   @Get("conversations/:id")
   @UseGuards(JwtAuthGuard)
-  async getConversation(@Param("id") id: number, @Req() req: Request) {
-    return this.aiService.getConversation(id, (req as any).user?.id ?? 0);
+  async getConversation(@Param("id") id: number, @Req() req: AuthRequest) {
+    return this.aiService.getConversation(id, req.user?.id ?? 0);
   }
 
   @Delete("conversations/:id")
   @UseGuards(JwtAuthGuard)
-  async deleteConversation(@Param("id") id: number, @Req() req: Request) {
-    await this.aiService.deleteConversation(id, (req as any).user?.id ?? 0);
+  async deleteConversation(@Param("id") id: number, @Req() req: AuthRequest) {
+    await this.aiService.deleteConversation(id, req.user?.id ?? 0);
     return { success: true };
   }
 

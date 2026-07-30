@@ -3,8 +3,7 @@ import crypto from "node:crypto";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-
-import { paginateQueryBuilder } from "@/common";
+import { paginateQueryBuilder, type AdminPaginationResponse } from "@/common";
 import { PostService } from "@/modules/post/post.service";
 import { PostStatus } from "@/modules/post/post.entity";
 import { CategoryService } from "@/modules/category/category.service";
@@ -30,6 +29,8 @@ import {
   SYSTEM_PROMPT,
   HumanMessage,
   SystemMessage,
+  AIMessage,
+  BaseMessage,
   Command,
   createChatModel,
   type ToolServices,
@@ -40,6 +41,10 @@ import { AiConfig } from "./ai-config.entity";
 import { AiAction, AiUsage } from "./ai-usage.entity";
 import { Conversation } from "./conversation.entity";
 import { SaveAiConfigDto, UsageQueryDto } from "./ai.dto";
+
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 // ---- SSE Emitter ----
 
@@ -151,7 +156,7 @@ export class AiService {
     const activeConfigId = activeConfig?.id;
 
     const isNew = !conversation.checkpoint;
-    const messages: any[] = isNew
+    const messages: BaseMessage[] = isNew
       ? [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(message)]
       : [new HumanMessage(message)];
 
@@ -163,8 +168,9 @@ export class AiService {
         handleLLMNewToken(token: string) {
           sseEmitter.emitToken(token);
         },
-        handleLLMEnd(output: any) {
-          const usage = output?.generations?.[0]?.[0]?.message?.usage_metadata;
+        handleLLMEnd(output: unknown) {
+          const llmOutput = output as { generations?: { [k: number]: { [k: number]: { message?: { usage_metadata?: { input_tokens?: number; output_tokens?: number } } } } } };
+          const usage = llmOutput?.generations?.[0]?.[0]?.message?.usage_metadata;
           if (usage) {
             totalInputTokens += usage.input_tokens ?? 0;
             totalOutputTokens += usage.output_tokens ?? 0;
@@ -193,9 +199,9 @@ export class AiService {
       }
 
       sseEmitter.emitDone();
-    } catch (err: any) {
-      this.logger.error(`Agent stream error: ${err.message}`);
-      sseEmitter.emitError(err.message || "AI 处理出错，请重试");
+    } catch (err: unknown) {
+      this.logger.error(`Agent stream error: ${errMsg(err)}`);
+      sseEmitter.emitError(errMsg(err) || "AI 处理出错，请重试");
     } finally {
       // Persist usage regardless of success/failure
       if ((totalInputTokens > 0 || totalOutputTokens > 0) && activeConfigId) {
@@ -221,7 +227,7 @@ export class AiService {
     const agent = await this.getOrCreateTempAgent();
     const id = threadId ?? `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-    const messages: any[] = threadId
+    const messages: BaseMessage[] = threadId
       ? [new HumanMessage(message)]
       : [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(message)];
 
@@ -247,9 +253,9 @@ export class AiService {
       }
 
       sseEmitter.emitDone(id);
-    } catch (err: any) {
-      this.logger.error(`Temp agent stream error: ${err.message}`);
-      sseEmitter.emitError(err.message || "AI 处理出错，请重试");
+    } catch (err: unknown) {
+      this.logger.error(`Temp agent stream error: ${errMsg(err)}`);
+      sseEmitter.emitError(errMsg(err) || "AI 处理出错，请重试");
     }
   }
 
@@ -279,9 +285,9 @@ export class AiService {
 
       await this.persistMessages(conversationId);
       sseEmitter.emitDone();
-    } catch (err: any) {
-      this.logger.error(`Confirm stream error: ${err.message}`);
-      sseEmitter.emitError(err.message || "AI 处理出错，请重试");
+    } catch (err: unknown) {
+      this.logger.error(`Confirm stream error: ${errMsg(err)}`);
+      sseEmitter.emitError(errMsg(err) || "AI 处理出错，请重试");
     }
   }
 
@@ -326,7 +332,7 @@ export class AiService {
             {
               checkpoint: data.checkpoint,
               checkpointMetadata: JSON.parse(data.metadata),
-              checkpointConfig: data.config as any,
+              checkpointConfig: JSON.stringify(data.config),
             },
           );
         },
@@ -379,108 +385,100 @@ export class AiService {
   }
 
   private buildToolServices(): ToolServices {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const asDto = <T>(args: Record<string, unknown>): T => args as unknown as T;
     const auth = () => this.requestAuth;
+
     return {
       postService: {
-        findPage: (args: any) => this.postService.paginateForAdmin(args),
-        findOne: (id: number) => this.postService.findOne(id),
-        create: (args: any) => this.postService.create(args, auth()),
-        update: (id: number, args: any) => this.postService.update(id, args),
-        delete: (id: number) => this.postService.remove(id),
-        publish: (id: number) => this.postService.updateStatus(id, PostStatus.PUBLISHED),
-        unpublish: (id: number) => this.postService.updateStatus(id, PostStatus.DRAFT),
-        top: (id: number) => this.postService.updateTop(id, true),
-        untop: (id: number) => this.postService.updateTop(id, false),
+        findPage: (args) => this.postService.paginateForAdmin(asDto(args)),
+        findOne: (id) => this.postService.findOne(id),
+        create: (args) => this.postService.create(asDto(args), auth()),
+        update: (id, args) => this.postService.update(id, asDto(args)),
+        delete: (id) => this.postService.remove(id),
+        publish: (id) => this.postService.updateStatus(id, PostStatus.PUBLISHED),
+        unpublish: (id) => this.postService.updateStatus(id, PostStatus.DRAFT),
+        top: (id) => this.postService.updateTop(id, true),
+        untop: (id) => this.postService.updateTop(id, false),
       },
       categoryService: {
         findAll: () => this.categoryService.findAll(),
-        create: (args: any) => this.categoryService.create(args),
-        update: (id: number, args: any) => this.categoryService.update(id, args),
-        delete: (id: number) => this.categoryService.remove(id),
+        create: (args) => this.categoryService.create(asDto(args)),
+        update: (id, args) => this.categoryService.update(id, asDto(args)),
+        delete: (id) => this.categoryService.remove(id),
       },
       tagService: {
         findAll: () => this.tagService.findAll(),
-        create: (args: any) => this.tagService.create(args),
-        update: (id: number, args: any) => this.tagService.update(id, args),
-        delete: (id: number) => this.tagService.remove(id),
+        create: (args) => this.tagService.create(asDto(args)),
+        update: (id, args) => this.tagService.update(id, asDto(args)),
+        delete: (id) => this.tagService.remove(id),
       },
       commentService: {
-        findPage: (args: any) => this.commentService.paginateForAdmin(args),
-        approve: (id: number) => this.commentService.updateStatus(id, CommentStatus.APPROVED),
-        reject: (id: number) => this.commentService.updateStatus(id, CommentStatus.REJECTED),
-        reply: (id: number, content: string) => {
-          // reply is implemented as creating a new comment with parentId
-          return this.commentService.create({ content, parentId: id } as any);
-        },
-        delete: (id: number) => this.commentService.remove(id),
+        findPage: (args) => this.commentService.paginateForAdmin(asDto(args)),
+        approve: (id) => this.commentService.updateStatus(id, CommentStatus.APPROVED),
+        reject: (id) => this.commentService.updateStatus(id, CommentStatus.REJECTED),
+        reply: (id, content) => this.commentService.create(asDto({ content, postId: 0, parentId: id })),
+        delete: (id) => this.commentService.remove(id),
       },
       friendLinkService: {
-        findAll: (status?: string) =>
-          this.friendLinkService.findAll(status as any),
-        approve: (id: number) =>
-          this.friendLinkService.updateStatus(id, { status: "approved" as any }),
-        reject: (id: number) =>
-          this.friendLinkService.updateStatus(id, { status: "rejected" as any }),
-        delete: (id: number) => this.friendLinkService.remove(id),
+        findAll: (status) => this.friendLinkService.findAll(status as Parameters<FriendLinkService["findAll"]>[0]),
+        approve: (id) => this.friendLinkService.updateStatus(id, asDto({ status: "approved" })),
+        reject: (id) => this.friendLinkService.updateStatus(id, asDto({ status: "rejected" })),
+        delete: (id) => this.friendLinkService.remove(id),
       },
       guestMessageService: {
-        findPage: (args: any) => this.guestMessageService.paginateForAdmin(args),
-        reply: (id: number, _content: string) => {
-          return this.guestMessageService.updateStatus(id, "replied" as any);
-        },
-        delete: (id: number) => this.guestMessageService.remove(id),
+        findPage: (args) => this.guestMessageService.paginateForAdmin(asDto(args)),
+        reply: (id, _content) => this.guestMessageService.updateStatus(id, "replied" as Parameters<GuestMessageService["updateStatus"]>[1]),
+        delete: (id) => this.guestMessageService.remove(id),
       },
       announcementService: {
-        findPage: (args: any) => this.announcementService.paginateForAdmin(args),
-        create: (args: any) => this.announcementService.create(args),
-        delete: (id: number) => this.announcementService.remove(id),
+        findPage: (args) => this.announcementService.paginateForAdmin(asDto(args)),
+        create: (args) => this.announcementService.create(asDto(args)),
+        delete: (id) => this.announcementService.remove(id),
       },
       changelogService: {
-        findPage: (args: any) => this.changelogService.paginateForAdmin(args),
-        create: (args: any) => this.changelogService.create(args),
-        delete: (id: number) => this.changelogService.remove(id),
+        findPage: (args) => this.changelogService.paginateForAdmin(asDto(args)),
+        create: (args) => this.changelogService.create(asDto(args)),
+        delete: (id) => this.changelogService.remove(id),
       },
       siteConfigService: {
         get: () => this.siteConfigService.get(),
-        update: (args: any) => this.siteConfigService.save(args),
+        update: (args) => this.siteConfigService.save(asDto(args)),
       },
       seoSettingService: {
         getLatest: () => this.seoSettingService.getSeoSetting(),
-        create: (args: any) => this.seoSettingService.save(args),
+        create: (args) => this.seoSettingService.save(asDto(args)),
       },
       icpInfoService: {
         getLatest: () => this.icpInfoService.getLatest(),
-        create: (args: any) => this.icpInfoService.save(args),
+        create: (args) => this.icpInfoService.save(asDto(args)),
       },
       settingService: {
-        get: () => this.settingService.getAll(),
-        update: (key: string, value: string) => this.settingService.save({ [key]: value } as any),
+        getAll: () => this.settingService.getAll(),
+        save: (dto) => this.settingService.save(asDto(dto)),
       },
       visitorService: {
-        getDashboard: () => this.visitorService.getDashboardStats(),
-        findPage: (args: any) => this.visitorService.paginateForAdmin(args),
-        getOnlineCount: () =>
-          this.visitorService.getOnlineStats().then((s) => s?.count ?? 0),
+        getDashboardStats: () => this.visitorService.getDashboardStats(),
+        paginateForAdmin: (args) => this.visitorService.paginateForAdmin(asDto(args)),
+        getOnlineStats: () => this.visitorService.getOnlineStats(),
       },
       dataTransferService: {
-        export: () => this.dataTransferService.exportAllToZip({} as any),
-        import: (data: string) =>
-          this.dataTransferService.importAllFromZip(data, { clearExisting: true } as any),
+        exportAllToZip: () => this.dataTransferService.exportAllToZip(asDto({})),
+        importAllFromZip: (data) => this.dataTransferService.importAllFromZip(data, asDto({ clearExisting: true })),
       },
       ossService: {
-        getSignUrl: (key: string, _expiresIn: number) =>
-          Promise.resolve(this.ossService.signUrl(key)),
+        signUrl: (key) => this.ossService.signUrl(key),
       },
       redisService: {
-        get: (key: string) => this.getRedis().get(key),
-        set: (key: string, value: string, ttlSeconds?: number) => {
+        get: (key) => this.getRedis().get(key),
+        set: (key, value, ttlSeconds) => {
           if (ttlSeconds) {
             return this.getRedis().setex(key, ttlSeconds, value).then(() => {});
           }
           return this.getRedis().set(key, value).then(() => {});
         },
-        del: (key: string) => this.getRedis().del(key).then(() => {}),
-        keys: (pattern: string) => this.getRedis().keys(pattern),
+        del: (key) => this.getRedis().del(key).then(() => {}),
+        keys: (pattern) => this.getRedis().keys(pattern),
       },
     };
   }
@@ -507,7 +505,7 @@ export class AiService {
     const result = await paginateQueryBuilder(qb, { page, limit });
     return {
       ...result,
-      items: ((result as any).items ?? []).map((c: Conversation) => ({
+      items: ((result as unknown as AdminPaginationResponse<Conversation>).items ?? []).map((c: Conversation) => ({
         id: c.id,
         title: c.title ?? "新对话",
         lastMessagePreview: this.getLastMessagePreview(c),
@@ -546,13 +544,13 @@ export class AiService {
         configurable: { thread_id: String(conversationId) },
       });
 
-      const rawMessages = (state?.values?.messages ?? []) as any[];
-      const messages: any[] = rawMessages.map((m: any) => ({
+      const rawMessages = (state?.values?.messages ?? []) as BaseMessage[];
+      const messages = rawMessages.map((m) => ({
         role: this.mapMessageRole(m),
         content: typeof m.content === "string"
           ? m.content
           : JSON.stringify(m.content ?? ""),
-        toolCalls: m.tool_calls?.map((tc: any) => ({
+        toolCalls: (m as AIMessage).tool_calls?.map((tc) => ({
           name: tc.name ?? "",
           args: tc.args ?? {},
           id: tc.id ?? "",
@@ -563,7 +561,7 @@ export class AiService {
       // MySQL persistent
       await this.conversationRepo.update(
         { id: conversationId },
-        { messages, updatedAt: new Date() },
+        { messages, updatedAt: new Date() } as Parameters<typeof this.conversationRepo.update>[1],
       );
 
       // Redis hot cache (last 20 messages, 24h TTL)
@@ -577,12 +575,12 @@ export class AiService {
       } catch {
         // Redis is optional for persistent conversations
       }
-    } catch (err: any) {
-      this.logger.warn(`persistMessages 失败 (非关键): ${err.message}`);
+    } catch (err: unknown) {
+      this.logger.warn(`persistMessages 失败 (非关键): ${errMsg(err)}`);
     }
   }
 
-  private mapMessageRole(m: any): string {
+  private mapMessageRole(m: BaseMessage): string {
     const type = m._getType?.() ?? m.getType?.() ?? "";
     if (type === "human" || type === "user") return "user";
     if (type === "ai" || type === "assistant") return "assistant";
@@ -622,8 +620,8 @@ export class AiService {
         { id: conversationId },
         { title },
       );
-    } catch (error: any) {
-      this.logger.warn(`生成会话标题失败: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.warn(`生成会话标题失败: ${errMsg(error)}`);
     }
   }
 
