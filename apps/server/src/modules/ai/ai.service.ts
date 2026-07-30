@@ -26,6 +26,7 @@ import { OssService } from "@/modules/oss/oss.service";
 import {
   createAgent,
   MySQLCheckpointer,
+  RedisCheckpointer,
   SYSTEM_PROMPT,
   HumanMessage,
   SystemMessage,
@@ -33,9 +34,10 @@ import {
   createChatModel,
   type ToolServices,
 } from "@blog/ai-agent";
+import Redis from "ioredis";
 
 import { AiConfig } from "./ai-config.entity";
-import { AiUsage } from "./ai-usage.entity";
+import { AiAction, AiUsage } from "./ai-usage.entity";
 import { Conversation } from "./conversation.entity";
 import { SaveAiConfigDto, UsageQueryDto } from "./ai.dto";
 
@@ -46,7 +48,7 @@ export interface SseEmitter {
   emitToolCall(toolName: string, args: Record<string, unknown>): void;
   emitToolResult(toolName: string, result: unknown): void;
   emitConfirm(toolName: string, args: Record<string, unknown>, message: string): void;
-  emitDone(): void;
+  emitDone(threadId?: string): void;
   emitError(message: string): void;
 }
 
@@ -93,6 +95,8 @@ function maskKey(key: string): string {
 export class AiService {
   private readonly logger = new Logger(AiService.name);
   private agentCache: { configId: number; agent: ReturnType<typeof createAgent> } | null = null;
+  private tempAgentCache: { configId: number; agent: ReturnType<typeof createAgent> } | null = null;
+  private redis: Redis | null = null;
   private requestAuth: string = "";
 
   constructor(
@@ -120,20 +124,106 @@ export class AiService {
 
   async handleChat(
     message: string,
-    conversationId: number | null,
+    conversationId: string | null,
     userId: number,
     authHeader: string,
     sseEmitter: SseEmitter,
+    temporary: boolean = false,
   ) {
     this.requestAuth = authHeader;
+    const startTime = Date.now();
 
-    const conversation = await this.getOrCreateConversation(conversationId, userId);
+    // Input validation: reject messages over 8000 chars (~2000 tokens)
+    if (message.length > 8000) {
+      sseEmitter.emitError("消息过长，请控制在 8000 字以内");
+      return;
+    }
+
+    if (temporary) {
+      return this.handleTemporaryChat(message, conversationId, sseEmitter);
+    }
+
+    const numId = conversationId ? Number(conversationId) : null;
+
+    const conversation = await this.getOrCreateConversation(numId, userId);
     const agent = await this.getOrCreateAgent();
+    const activeConfig = await this.configRepo.findOne({ where: { isActive: true } });
+    const activeConfigId = activeConfig?.id;
 
     const isNew = !conversation.checkpoint;
     const messages: any[] = isNew
       ? [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(message)]
       : [new HumanMessage(message)];
+
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    const callbacks = [
+      {
+        handleLLMNewToken(token: string) {
+          sseEmitter.emitToken(token);
+        },
+        handleLLMEnd(output: any) {
+          const usage = output?.generations?.[0]?.[0]?.message?.usage_metadata;
+          if (usage) {
+            totalInputTokens += usage.input_tokens ?? 0;
+            totalOutputTokens += usage.output_tokens ?? 0;
+          }
+        },
+      },
+    ];
+
+    try {
+      const stream = await agent.stream(
+        { messages },
+        {
+          configurable: { thread_id: String(conversation.id), sseEmitter },
+          callbacks,
+        },
+      );
+
+      for await (const _chunk of stream) {
+        // SSE events emitted via callbacks and node-internal sseEmitter
+      }
+
+      await this.persistMessages(conversation.id);
+
+      if (!conversation.title) {
+        setImmediate(() => this.generateTitle(conversation.id));
+      }
+
+      sseEmitter.emitDone();
+    } catch (err: any) {
+      this.logger.error(`Agent stream error: ${err.message}`);
+      sseEmitter.emitError(err.message || "AI 处理出错，请重试");
+    } finally {
+      // Persist usage regardless of success/failure
+      if ((totalInputTokens > 0 || totalOutputTokens > 0) && activeConfigId) {
+        setImmediate(() =>
+          this.usageRepo.save({
+            configId: activeConfigId,
+            model: activeConfig?.model ?? "",
+            promptTokens: totalInputTokens,
+            completionTokens: totalOutputTokens,
+            latencyMs: Date.now() - startTime,
+            action: AiAction.CHAT,
+          } as AiUsage).catch(() => {}),
+        );
+      }
+    }
+  }
+
+  private async handleTemporaryChat(
+    message: string,
+    threadId: string | null,
+    sseEmitter: SseEmitter,
+  ) {
+    const agent = await this.getOrCreateTempAgent();
+    const id = threadId ?? `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const messages: any[] = threadId
+      ? [new HumanMessage(message)]
+      : [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(message)];
 
     const callbacks = [
       {
@@ -143,26 +233,24 @@ export class AiService {
       },
     ];
 
-    const stream = await agent.stream(
-      { messages },
-      {
-        configurable: { thread_id: String(conversation.id), sseEmitter },
-        callbacks,
-      },
-    );
+    try {
+      const stream = await agent.stream(
+        { messages },
+        {
+          configurable: { thread_id: id, sseEmitter },
+          callbacks,
+        },
+      );
 
-    for await (const _chunk of stream) {
-      // SSE events emitted via callbacks and node-internal sseEmitter
+      for await (const _chunk of stream) {
+        // SSE events emitted via callbacks and node-internal sseEmitter
+      }
+
+      sseEmitter.emitDone(id);
+    } catch (err: any) {
+      this.logger.error(`Temp agent stream error: ${err.message}`);
+      sseEmitter.emitError(err.message || "AI 处理出错，请重试");
     }
-
-    // Persist messages from checkpoint
-    await this.persistMessages(conversation.id);
-
-    if (!conversation.title) {
-      setImmediate(() => this.generateTitle(conversation.id));
-    }
-
-    sseEmitter.emitDone();
   }
 
   async handleConfirm(conversationId: number, confirm: boolean, sseEmitter: SseEmitter) {
@@ -176,20 +264,25 @@ export class AiService {
       },
     ];
 
-    const stream = await agent.stream(
-      new Command({ resume: { confirm } }),
-      {
-        configurable: { thread_id: String(conversationId), sseEmitter },
-        callbacks,
-      },
-    );
+    try {
+      const stream = await agent.stream(
+        new Command({ resume: { confirm } }),
+        {
+          configurable: { thread_id: String(conversationId), sseEmitter },
+          callbacks,
+        },
+      );
 
-    for await (const _chunk of stream) {
-      // SSE events emitted via callbacks and node-internal sseEmitter
+      for await (const _chunk of stream) {
+        // SSE events emitted via callbacks and node-internal sseEmitter
+      }
+
+      await this.persistMessages(conversationId);
+      sseEmitter.emitDone();
+    } catch (err: any) {
+      this.logger.error(`Confirm stream error: ${err.message}`);
+      sseEmitter.emitError(err.message || "AI 处理出错，请重试");
     }
-
-    await this.persistMessages(conversationId);
-    sseEmitter.emitDone();
   }
 
   // ==================== Agent Factory ====================
@@ -241,6 +334,47 @@ export class AiService {
     });
 
     this.agentCache = { configId: activeConfig.id, agent };
+    return agent;
+  }
+
+  private getRedis(): Redis {
+    if (!this.redis) {
+      this.redis = new Redis({
+        host: process.env.REDIS_HOST ?? "127.0.0.1",
+        port: Number(process.env.REDIS_PORT) || 6379,
+        maxRetriesPerRequest: null,
+      });
+    }
+    return this.redis;
+  }
+
+  private async getOrCreateTempAgent() {
+    const activeConfig = await this.configRepo.findOne({ where: { isActive: true } });
+    if (!activeConfig) throw new BadRequestException("没有启用的 AI 模型配置，请先在后台配置");
+
+    if (this.tempAgentCache?.configId === activeConfig.id) {
+      return this.tempAgentCache.agent;
+    }
+
+    const agent = createAgent({
+      llmConfig: {
+        provider: activeConfig.provider as "openai" | "deepseek" | "anthropic",
+        model: activeConfig.model,
+        apiKey: decrypt(activeConfig.apiKey),
+        baseUrl: activeConfig.baseUrl,
+        maxTokens: activeConfig.maxTokens,
+        temperature: Number(activeConfig.temperature),
+      },
+      services: this.buildToolServices(),
+      dangerousToolNames: [
+        "delete_post", "delete_category", "delete_tag",
+        "delete_comment", "delete_friend_link", "delete_guest_message",
+        "delete_announcement", "delete_changelog", "import_data",
+      ],
+      checkpointer: new RedisCheckpointer(this.getRedis(), "temp_checkpoint:", 3600),
+    });
+
+    this.tempAgentCache = { configId: activeConfig.id, agent };
     return agent;
   }
 
@@ -335,7 +469,18 @@ export class AiService {
       },
       ossService: {
         getSignUrl: (key: string, _expiresIn: number) =>
-          this.ossService.signUrl(key),
+          Promise.resolve(this.ossService.signUrl(key)),
+      },
+      redisService: {
+        get: (key: string) => this.getRedis().get(key),
+        set: (key: string, value: string, ttlSeconds?: number) => {
+          if (ttlSeconds) {
+            return this.getRedis().setex(key, ttlSeconds, value).then(() => {});
+          }
+          return this.getRedis().set(key, value).then(() => {});
+        },
+        del: (key: string) => this.getRedis().del(key).then(() => {}),
+        keys: (pattern: string) => this.getRedis().keys(pattern),
       },
     };
   }
@@ -395,12 +540,55 @@ export class AiService {
   }
 
   private async persistMessages(conversationId: number) {
-    // Messages are stored in checkpoint by LangGraph.
-    // For display purposes, we extract a summary from the checkpoint.
-    await this.conversationRepo.update(
-      { id: conversationId },
-      { updatedAt: new Date() },
-    );
+    try {
+      const agent = await this.getOrCreateAgent();
+      const state = await agent.getState({
+        configurable: { thread_id: String(conversationId) },
+      });
+
+      const rawMessages = (state?.values?.messages ?? []) as any[];
+      const messages: any[] = rawMessages.map((m: any) => ({
+        role: this.mapMessageRole(m),
+        content: typeof m.content === "string"
+          ? m.content
+          : JSON.stringify(m.content ?? ""),
+        toolCalls: m.tool_calls?.map((tc: any) => ({
+          name: tc.name ?? "",
+          args: tc.args ?? {},
+          id: tc.id ?? "",
+        })),
+        createdAt: new Date().toISOString(),
+      }));
+
+      // MySQL persistent
+      await this.conversationRepo.update(
+        { id: conversationId },
+        { messages, updatedAt: new Date() },
+      );
+
+      // Redis hot cache (last 20 messages, 24h TTL)
+      try {
+        const redis = this.getRedis();
+        await redis.setex(
+          `conversation:messages:${conversationId}`,
+          86400,
+          JSON.stringify(messages.slice(-20)),
+        );
+      } catch {
+        // Redis is optional for persistent conversations
+      }
+    } catch (err: any) {
+      this.logger.warn(`persistMessages 失败 (非关键): ${err.message}`);
+    }
+  }
+
+  private mapMessageRole(m: any): string {
+    const type = m._getType?.() ?? m.getType?.() ?? "";
+    if (type === "human" || type === "user") return "user";
+    if (type === "ai" || type === "assistant") return "assistant";
+    if (type === "tool") return "tool";
+    if (type === "system") return "system";
+    return "assistant";
   }
 
   private async generateTitle(conversationId: number) {
@@ -409,9 +597,26 @@ export class AiService {
       if (!conv || conv.title) return;
 
       const firstUserMsg = (conv.messages ?? []).find((m) => m.role === "user");
-      const title = firstUserMsg
-        ? firstUserMsg.content.slice(0, 200)
-        : "新对话";
+      if (!firstUserMsg) return;
+
+      const activeConfig = await this.configRepo.findOne({ where: { isActive: true } });
+      if (!activeConfig) return;
+
+      const model = createChatModel({
+        provider: activeConfig.provider as "openai" | "deepseek" | "anthropic",
+        model: activeConfig.model,
+        apiKey: decrypt(activeConfig.apiKey),
+        baseUrl: activeConfig.baseUrl,
+        maxTokens: 50,
+        temperature: 0.3,
+      });
+
+      const resp = await model.invoke([
+        new SystemMessage("为以下对话生成简短标题（10字以内），直接输出标题，不要加引号、标点或解释。"),
+        new HumanMessage(firstUserMsg.content.slice(0, 200)),
+      ]);
+
+      const title = (resp.content as string).trim().slice(0, 50);
 
       await this.conversationRepo.update(
         { id: conversationId },

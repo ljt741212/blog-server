@@ -83,6 +83,17 @@ import {
   createTranslateTextTool, createImitateStyleTool,
 } from "./writing.tool";
 
+// ---- memory (5) ----
+import defaultMemoryTools from "./memory.tool";
+
+// ---- note (4) ----
+import defaultNoteTools from "./note.tool";
+
+// ---- deep-task (1) ----
+import defaultDeepTaskTools, { setDeepTaskLlmConfig } from "./deep-task.tool";
+
+export { setDeepTaskLlmConfig };
+
 // ---- Registry ----
 
 export const allToolFactories: ToolFactory[] = [
@@ -131,6 +142,11 @@ export const allToolFactories: ToolFactory[] = [
   createGenerateOutlineTool, createSuggestTagsTool,
   createGenerateSeoMetaTool, createReviewArticleTool,
   createTranslateTextTool, createImitateStyleTool,
+  // memory + note
+  ...defaultMemoryTools,
+  ...defaultNoteTools,
+  // deep-task
+  ...defaultDeepTaskTools,
 ];
 
 export const dangerousToolNames = new Set([

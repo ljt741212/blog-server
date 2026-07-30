@@ -10,6 +10,7 @@
     "test:e2e": "pnpm --filter server test:e2e"
   },
   "dependencies": {
-    "@blog/ai-agent": "workspace:*"
+    "@blog/ai-agent": "workspace:*",
+    "ioredis": "^5.11.1"
   }
 }

@@ -7,6 +7,7 @@ import { BaseCheckpointSaver } from "@langchain/langgraph-checkpoint";
 import { AgentState } from "./state";
 import { makeCallAgent, makeExecuteTool } from "./nodes";
 import { createChatModel } from "./chat-model";
+import { ContextManager } from "../context/context-manager";
 import type { LlmConfig } from "../tools/types";
 
 export interface BuildAgentOptions {
@@ -20,9 +21,11 @@ export function buildAgent(options: BuildAgentOptions) {
   const model = createChatModel(options.llmConfig);
   const modelWithTools = model.bindTools!(options.tools) as unknown as BaseChatModel;
 
+  const contextManager = new ContextManager(options.llmConfig);
+
   const graph = new StateGraph(AgentState)
-    .addNode("agent", makeCallAgent(modelWithTools))
-    .addNode("tools", makeExecuteTool(options.tools, new Set(options.dangerousToolNames)))
+    .addNode("agent", makeCallAgent(modelWithTools, model, contextManager))
+    .addNode("tools", makeExecuteTool(options.tools, new Set(options.dangerousToolNames), contextManager.tokenCounter))
     .addEdge(START, "agent")
     .addConditionalEdges("agent", afterAgent, { tools: "tools", end: END })
     .addEdge("tools", "agent");

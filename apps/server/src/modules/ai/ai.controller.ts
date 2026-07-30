@@ -41,6 +41,7 @@ export class AiController {
         (req as any).user?.id ?? 0,
         authHeader,
         emitter,
+        dto.temporary ?? false,
       );
     } catch (error) {
       emitter.emitError(error.message);
@@ -153,8 +154,8 @@ export class AiController {
       emitConfirm: (tool, args, message) => {
         res.write(`event: confirm\ndata: ${JSON.stringify({ type: "confirm", tool, args, message })}\n\n`);
       },
-      emitDone: () => {
-        res.write(`event: done\ndata: ${JSON.stringify({ type: "done" })}\n\n`);
+      emitDone: (threadId) => {
+        res.write(`event: done\ndata: ${JSON.stringify({ type: "done", threadId: threadId ?? null })}\n\n`);
         res.end();
       },
       emitError: (message) => {

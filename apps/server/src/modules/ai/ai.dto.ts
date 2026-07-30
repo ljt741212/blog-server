@@ -64,9 +64,12 @@ export class ChatDto {
   message: string;
 
   @IsOptional()
-  @IsInt()
-  @Type(() => Number)
-  conversationId?: number;
+  conversationId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  @Type(() => Boolean)
+  temporary?: boolean;
 }
 
 export class ConfirmDto {
