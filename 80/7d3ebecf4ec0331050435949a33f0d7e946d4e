@@ -1,0 +1,24 @@
+packages/ai-agent/tsconfig.json
+  64142c1c3a27c6cb 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "807d3ebecf4ec0331050435949a33f0d7e946d4e",
+  "prompts": {
+    "64142c1c3a27c6cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8c64c5b-3092-4536-84c4-660e78d20f36",
+        "model": "deepseek-v4-pro-260425"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 3,
+      "accepted_lines": 23,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/704d81cf450949c334eaa27a801e7a6ec7cd312215dbce22db39c14af107ba35"
+    }
+  }
+}
