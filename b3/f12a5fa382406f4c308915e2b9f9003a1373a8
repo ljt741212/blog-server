@@ -1,0 +1,47 @@
+apps/server/src/modules/ai/ai.controller.ts
+  ba169e5f0ec5b56c 16-21
+packages/ai-agent/src/context/context-manager.ts
+  ba169e5f0ec5b56c 72
+packages/ai-agent/src/context/token-counter.ts
+  ba169e5f0ec5b56c 35
+apps/server/src/modules/ai/ai.service.ts
+  3362cb4dccc9f75b 43,60-62,64,84,87,98-100,102,104,107,121-122,124-126,128,134-135,137-138,185,187,204-210,217-219,267-268,270-274,287-289,324-326,328,340-343,368,370-371,380,399-400,403,422,424-425,434,453-454,457,478-479,498-503,505,509-510,512-515,517-520,522,526-527,530-531,533,537-538,565-566,570-574,576,585-587,589-591,593-596,610-611,613,630,633,682,717-718,786,788,792,801-803,809,818,820,856,880,884,887-888,892-893,895,899,902-905,907
+  ba169e5f0ec5b56c 237-243,245-246,249-250,253-255,265-266,275-276,312-313,345-351,353-354,357,528-529,658,660-668,676-679,681,683-684,687-688,690-691,693,700,719,721-723,725-733,735-744,746-751,753,755,757-758,761-763,765,767-772,775-776,778,780-781,783,804
+.husky/pre-commit
+  ba169e5f0ec5b56c 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "b3f12a5fa382406f4c308915e2b9f9003a1373a8",
+  "prompts": {
+    "3362cb4dccc9f75b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "114f56d4-9198-48d9-8e52-b02c02332135",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 3,
+      "total_deletions": 3,
+      "accepted_lines": 654,
+      "overriden_lines": 106,
+      "messages_url": "https://git-ai.hsjdata.com/cas/4f662244b45b03e525203ccd5c6bb8629ee22ce320547459d4735d6ba51f9bb9"
+    },
+    "ba169e5f0ec5b56c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e65a16f-2073-432d-ad38-fc8881a04211",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 161,
+      "total_deletions": 97,
+      "accepted_lines": 122,
+      "overriden_lines": 20,
+      "messages_url": "https://git-ai.hsjdata.com/cas/413120b7e4c6550c8b03241b47b2f223be4807f15c835f4ee8f0dfff57cf7681"
+    }
+  }
+}
