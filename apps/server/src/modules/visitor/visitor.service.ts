@@ -37,7 +37,7 @@ export class VisitorService {
   async recordVisit(dto: TrackVisitDto, req: Request) {
     const ip = this.extractClientIp(req);
     const userAgent = parseUserAgent(
-      dto.userAgent || (req.headers['user-agent'] as string) || '',
+      dto.userAgent || req.headers['user-agent'] || '',
     );
 
     let visitor: Visitor | null = null;
@@ -118,7 +118,7 @@ export class VisitorService {
   async recordHeartbeat(dto: TrackVisitDto, req: Request) {
     const ip = this.extractClientIp(req);
     const userAgent = parseUserAgent(
-      dto.userAgent || (req.headers['user-agent'] as string) || '',
+      dto.userAgent || req.headers['user-agent'] || '',
     );
 
     let visitor = await this.visitorRepo.findOne({

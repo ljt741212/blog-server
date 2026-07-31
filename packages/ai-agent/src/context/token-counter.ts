@@ -32,6 +32,7 @@ export class TokenCounter {
   }
 
   count(text: string): number {
+    if (text == null || typeof text !== "string") return 0;
     const ratio = PROVIDER_TOKEN_RATIOS[this.provider] ?? 4.0;
     return Math.ceil(text.length / ratio);
   }

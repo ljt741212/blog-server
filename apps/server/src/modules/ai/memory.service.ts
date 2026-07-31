@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
-import { AiMemory } from "./ai-memory.entity";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+
+import { AiMemory } from './ai-memory.entity';
 
 export interface MemoryAddInput {
   userId: number;
@@ -17,7 +18,7 @@ export interface MemorySearchInput {
 
 export interface MemoryForgetInput {
   userId: number;
-  strategy: "importance_based" | "time_based" | "capacity_based";
+  strategy: 'importance_based' | 'time_based' | 'capacity_based';
   threshold?: number;
   maxAgeDays?: number;
 }
@@ -41,21 +42,21 @@ export class MemoryService {
 
   async search(input: MemorySearchInput) {
     const qb = this.repo
-      .createQueryBuilder("m")
-      .where("m.userId = :userId", { userId: input.userId });
+      .createQueryBuilder('m')
+      .where('m.userId = :userId', { userId: input.userId });
 
     // Keyword matching on content
     const words = input.query.split(/\s+/).filter(Boolean);
     if (words.length > 0) {
       qb.andWhere(
-        words.map((_, i) => `m.content LIKE :kw${i}`).join(" OR "),
+        words.map((_, i) => `m.content LIKE :kw${i}`).join(' OR '),
         Object.fromEntries(words.map((w, i) => [`kw${i}`, `%${w}%`])),
       );
     }
 
     const all = await qb
-      .orderBy("m.importance", "DESC")
-      .addOrderBy("m.createdAt", "DESC")
+      .orderBy('m.importance', 'DESC')
+      .addOrderBy('m.createdAt', 'DESC')
       .take(input.limit * 3)
       .getMany();
 
@@ -76,7 +77,7 @@ export class MemoryService {
     // Increment access count for matched memories
     const ids = top.map((s) => s.memory.id);
     if (ids.length) {
-      await this.repo.increment({ id: In(ids) }, "accessCount", 1);
+      await this.repo.increment({ id: In(ids) }, 'accessCount', 1);
     }
 
     return top.map((s) => ({
@@ -88,20 +89,25 @@ export class MemoryService {
   }
 
   async forget(input: MemoryForgetInput) {
-    const qb = this.repo.createQueryBuilder().delete().where("userId = :uid", { uid: input.userId });
+    const qb = this.repo
+      .createQueryBuilder()
+      .delete()
+      .where('userId = :uid', { uid: input.userId });
 
-    if (input.strategy === "importance_based") {
-      qb.andWhere("importance < :threshold", { threshold: input.threshold ?? 0.1 });
-    } else if (input.strategy === "time_based") {
+    if (input.strategy === 'importance_based') {
+      qb.andWhere('importance < :threshold', {
+        threshold: input.threshold ?? 0.1,
+      });
+    } else if (input.strategy === 'time_based') {
       const cutoff = new Date(Date.now() - (input.maxAgeDays ?? 30) * 86400000);
-      qb.andWhere("createdAt < :cutoff", { cutoff });
-    } else if (input.strategy === "capacity_based") {
+      qb.andWhere('createdAt < :cutoff', { cutoff });
+    } else if (input.strategy === 'capacity_based') {
       // Delete lowest-importance memories beyond 200 per user
       const count = await this.repo.count({ where: { userId: input.userId } });
       if (count > 200) {
         const toDelete = await this.repo.find({
           where: { userId: input.userId },
-          order: { importance: "ASC" },
+          order: { importance: 'ASC' },
           take: count - 200,
         });
         if (toDelete.length) {
@@ -113,16 +119,16 @@ export class MemoryService {
     }
 
     const result = await qb.execute();
-    return { deleted: (result.affected ?? 0) as number };
+    return { deleted: result.affected ?? 0 };
   }
 
   async summary(userId: number) {
     const [total, avgRow] = await Promise.all([
       this.repo.count({ where: { userId } }),
       this.repo
-        .createQueryBuilder("m")
-        .select("AVG(m.importance)", "avg")
-        .where("m.userId = :uid", { uid: userId })
+        .createQueryBuilder('m')
+        .select('AVG(m.importance)', 'avg')
+        .where('m.userId = :uid', { uid: userId })
         .getRawOne<{ avg: string }>(),
     ]);
     return { total, avgImportance: Number(avgRow?.avg ?? 0).toFixed(2) };

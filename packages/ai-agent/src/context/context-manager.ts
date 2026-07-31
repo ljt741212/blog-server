@@ -69,7 +69,7 @@ export class ContextManager {
       const role = getMsgType(msg);
       if (role === "system") return;
 
-      const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+      const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content ?? "");
       const type = role === "tool" ? "tool_result" : "chat";
       const relevance = this.calcRelevance(type, i, messages.length);
 

@@ -80,7 +80,7 @@ export class UserController {
   save(@Body() dto: CreateUserDto & { id?: number }) {
     if (dto.id != null && dto.id > 0) {
       const { id, ...rest } = dto;
-      return this.userService.update(id, rest as UpdateUserDto);
+      return this.userService.update(id, rest);
     }
     return this.userService.create(dto);
   }

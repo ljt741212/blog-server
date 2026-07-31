@@ -1,26 +1,4 @@
-import crypto from "node:crypto";
-
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { paginateQueryBuilder, type AdminPaginationResponse } from "@/common";
-import { PostService } from "@/modules/post/post.service";
-import { PostStatus } from "@/modules/post/post.entity";
-import { CategoryService } from "@/modules/category/category.service";
-import { TagService } from "@/modules/tag/tag.service";
-import { CommentService } from "@/modules/comment/comment.service";
-import { CommentStatus } from "@/modules/comment/comment.entity";
-import { FriendLinkService } from "@/modules/friend-link/friend-link.service";
-import { GuestMessageService } from "@/modules/guest-message/guest-message.service";
-import { AnnouncementService } from "@/modules/announcement/announcement.service";
-import { ChangelogService } from "@/modules/changelog/changelog.service";
-import { SeoSettingService } from "@/modules/seo-setting/seo-setting.service";
-import { SiteConfigService } from "@/modules/site-config/site-config.service";
-import { IcpInfoService } from "@/modules/icp-info/icp-info.service";
-import { SettingService } from "@/modules/setting/setting.service";
-import { VisitorService } from "@/modules/visitor/visitor.service";
-import { DataTransferService } from "@/modules/data-transfer/data-transfer.service";
-import { OssService } from "@/modules/oss/oss.service";
+import crypto from 'node:crypto';
 
 import {
   createAgent,
@@ -33,14 +11,41 @@ import {
   Command,
   createChatModel,
   type ToolServices,
-} from "@blog/ai-agent";
-import Redis from "ioredis";
+} from '@blog/ai-agent';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import Redis from 'ioredis';
+import { Repository } from 'typeorm';
 
-import { AiConfig } from "./ai-config.entity";
-import { AiAction, AiUsage } from "./ai-usage.entity";
-import { Conversation } from "./conversation.entity";
-import { MemoryService } from "./memory.service";
-import { SaveAiConfigDto, UsageQueryDto } from "./ai.dto";
+import { paginateQueryBuilder, paginateQueryBuilderForAdmin } from '@/common';
+import { AnnouncementService } from '@/modules/announcement/announcement.service';
+import { CategoryService } from '@/modules/category/category.service';
+import { ChangelogService } from '@/modules/changelog/changelog.service';
+import { CommentStatus } from '@/modules/comment/comment.entity';
+import { CommentService } from '@/modules/comment/comment.service';
+import { DataTransferService } from '@/modules/data-transfer/data-transfer.service';
+import { FriendLinkService } from '@/modules/friend-link/friend-link.service';
+import { GuestMessageService } from '@/modules/guest-message/guest-message.service';
+import { IcpInfoService } from '@/modules/icp-info/icp-info.service';
+import { OssService } from '@/modules/oss/oss.service';
+import { PostStatus } from '@/modules/post/post.entity';
+import { PostService } from '@/modules/post/post.service';
+import { SeoSettingService } from '@/modules/seo-setting/seo-setting.service';
+import { SettingService } from '@/modules/setting/setting.service';
+import { SiteConfigService } from '@/modules/site-config/site-config.service';
+import { TagService } from '@/modules/tag/tag.service';
+import { VisitorService } from '@/modules/visitor/visitor.service';
+
+import { AiConfig } from './ai-config.entity';
+import { AiAction, AiUsage } from './ai-usage.entity';
+import { SaveAiConfigDto, UsageQueryDto } from './ai.dto';
+import { Conversation, type ConversationMessage } from './conversation.entity';
+import { MemoryService } from './memory.service';
 
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -52,45 +57,59 @@ export interface SseEmitter {
   emitToken(content: string): void;
   emitToolCall(toolName: string, args: Record<string, unknown>): void;
   emitToolResult(toolName: string, result: unknown): void;
-  emitConfirm(toolName: string, args: Record<string, unknown>, message: string): void;
+  emitConfirm(
+    toolName: string,
+    args: Record<string, unknown>,
+    message: string,
+  ): void;
   emitDone(threadId?: string): void;
   emitError(message: string): void;
 }
 
 // ---- Encryption ----
 
-const ALGORITHM = "aes-256-gcm";
+const ALGORITHM = 'aes-256-gcm';
 const IV_LEN = 16;
 
 function getEncryptionKey(): Buffer {
   const raw = process.env.ENCRYPTION_KEY;
-  if (!raw) throw new Error("ENCRYPTION_KEY is not configured");
-  return crypto.createHash("sha256").update(raw).digest();
+  if (!raw) throw new Error('ENCRYPTION_KEY is not configured');
+  return crypto.createHash('sha256').update(raw).digest();
 }
 
 function encrypt(text: string): string {
   const key = getEncryptionKey();
   const iv = crypto.randomBytes(IV_LEN);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-  const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(text, 'utf8'),
+    cipher.final(),
+  ]);
   const tag = cipher.getAuthTag();
-  return `${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+  return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
 function decrypt(encoded: string): string {
-  if (!encoded) return "";
+  if (!encoded) return '';
   const key = getEncryptionKey();
-  const parts = encoded.split(":");
+  const parts = encoded.split(':');
   if (parts.length !== 3) return encoded;
   const [ivHex, tagHex, dataHex] = parts;
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, "hex"));
-  decipher.setAuthTag(Buffer.from(tagHex, "hex"));
-  const decrypted = Buffer.concat([decipher.update(Buffer.from(dataHex, "hex")), decipher.final()]);
-  return decrypted.toString("utf8");
+  const decipher = crypto.createDecipheriv(
+    ALGORITHM,
+    key,
+    Buffer.from(ivHex, 'hex'),
+  );
+  decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(dataHex, 'hex')),
+    decipher.final(),
+  ]);
+  return decrypted.toString('utf8');
 }
 
 function maskKey(key: string): string {
-  if (key.length <= 8) return "****";
+  if (key.length <= 8) return '****';
   return `${key.slice(0, 4)}****${key.slice(-4)}`;
 }
 
@@ -99,16 +118,24 @@ function maskKey(key: string): string {
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
-  private agentCache: { configId: number; agent: ReturnType<typeof createAgent> } | null = null;
-  private tempAgentCache: { configId: number; agent: ReturnType<typeof createAgent> } | null = null;
+  private agentCache: {
+    configId: number;
+    agent: ReturnType<typeof createAgent>;
+  } | null = null;
+  private tempAgentCache: {
+    configId: number;
+    agent: ReturnType<typeof createAgent>;
+  } | null = null;
   private redis: Redis | null = null;
-  private requestAuth: string = "";
+  private requestAuth: string = '';
   private requestUserId: number = 0;
 
   constructor(
-    @InjectRepository(AiConfig) private readonly configRepo: Repository<AiConfig>,
+    @InjectRepository(AiConfig)
+    private readonly configRepo: Repository<AiConfig>,
     @InjectRepository(AiUsage) private readonly usageRepo: Repository<AiUsage>,
-    @InjectRepository(Conversation) private readonly conversationRepo: Repository<Conversation>,
+    @InjectRepository(Conversation)
+    private readonly conversationRepo: Repository<Conversation>,
     private readonly postService: PostService,
     private readonly categoryService: CategoryService,
     private readonly tagService: TagService,
@@ -143,7 +170,7 @@ export class AiService {
 
     // Input validation: reject messages over 8000 chars (~2000 tokens)
     if (message.length > 8000) {
-      sseEmitter.emitError("消息过长，请控制在 8000 字以内");
+      sseEmitter.emitError('消息过长，请控制在 8000 字以内');
       return;
     }
 
@@ -155,7 +182,9 @@ export class AiService {
 
     const conversation = await this.getOrCreateConversation(numId, userId);
     const agent = await this.getOrCreateAgent();
-    const activeConfig = await this.configRepo.findOne({ where: { isActive: true } });
+    const activeConfig = await this.configRepo.findOne({
+      where: { isActive: true },
+    });
     const activeConfigId = activeConfig?.id;
 
     const isNew = !conversation.checkpoint;
@@ -172,8 +201,22 @@ export class AiService {
           sseEmitter.emitToken(token);
         },
         handleLLMEnd(output: unknown) {
-          const llmOutput = output as { generations?: { [k: number]: { [k: number]: { message?: { usage_metadata?: { input_tokens?: number; output_tokens?: number } } } } } };
-          const usage = llmOutput?.generations?.[0]?.[0]?.message?.usage_metadata;
+          const llmOutput = output as {
+            generations?: {
+              [k: number]: {
+                [k: number]: {
+                  message?: {
+                    usage_metadata?: {
+                      input_tokens?: number;
+                      output_tokens?: number;
+                    };
+                  };
+                };
+              };
+            };
+          };
+          const usage =
+            llmOutput?.generations?.[0]?.[0]?.message?.usage_metadata;
           if (usage) {
             totalInputTokens += usage.input_tokens ?? 0;
             totalOutputTokens += usage.output_tokens ?? 0;
@@ -191,33 +234,46 @@ export class AiService {
         },
       );
 
-      for await (const _chunk of stream) {
-        // SSE events emitted via callbacks and node-internal sseEmitter
+      const streamMessages: BaseMessage[] = [];
+      for await (const rawChunk of stream) {
+        if (rawChunk == null) continue;
+        const chunk: unknown = Array.isArray(rawChunk)
+          ? (rawChunk[2] ?? rawChunk[1] ?? rawChunk)
+          : rawChunk;
+        const msgs = this.extractMessagesFromChunk(
+          chunk as Record<string, unknown>,
+        );
+        if (msgs.length > 0) streamMessages.push(...msgs);
       }
 
-      await this.persistMessages(conversation.id);
+      const allNewMessages = [...messages, ...streamMessages];
+      await this.persistMessages(conversation.id, allNewMessages);
 
       if (!conversation.title) {
-        setImmediate(() => this.generateTitle(conversation.id));
+        setImmediate(() => {
+          void this.generateTitle(conversation.id, message);
+        });
       }
 
       sseEmitter.emitDone();
     } catch (err: unknown) {
       this.logger.error(`Agent stream error: ${errMsg(err)}`);
-      sseEmitter.emitError(errMsg(err) || "AI 处理出错，请重试");
+      sseEmitter.emitError(errMsg(err) || 'AI 处理出错，请重试');
     } finally {
       // Persist usage regardless of success/failure
       if ((totalInputTokens > 0 || totalOutputTokens > 0) && activeConfigId) {
-        setImmediate(() =>
-          this.usageRepo.save({
-            configId: activeConfigId,
-            model: activeConfig?.model ?? "",
-            promptTokens: totalInputTokens,
-            completionTokens: totalOutputTokens,
-            latencyMs: Date.now() - startTime,
-            action: AiAction.CHAT,
-          } as AiUsage).catch(() => {}),
-        );
+        setImmediate(() => {
+          void this.usageRepo
+            .save({
+              configId: activeConfigId,
+              model: activeConfig?.model ?? '',
+              promptTokens: totalInputTokens,
+              completionTokens: totalOutputTokens,
+              latencyMs: Date.now() - startTime,
+              action: AiAction.CHAT,
+            } as AiUsage)
+            .catch(() => {});
+        });
       }
     }
   }
@@ -228,7 +284,9 @@ export class AiService {
     sseEmitter: SseEmitter,
   ) {
     const agent = await this.getOrCreateTempAgent();
-    const id = threadId ?? `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id =
+      threadId ??
+      `temp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     const messages: BaseMessage[] = threadId
       ? [new HumanMessage(message)]
@@ -251,18 +309,23 @@ export class AiService {
         },
       );
 
-      for await (const _chunk of stream) {
+      for await (const _unused of stream) {
+        void _unused;
         // SSE events emitted via callbacks and node-internal sseEmitter
       }
 
       sseEmitter.emitDone(id);
     } catch (err: unknown) {
       this.logger.error(`Temp agent stream error: ${errMsg(err)}`);
-      sseEmitter.emitError(errMsg(err) || "AI 处理出错，请重试");
+      sseEmitter.emitError(errMsg(err) || 'AI 处理出错，请重试');
     }
   }
 
-  async handleConfirm(conversationId: number, confirm: boolean, sseEmitter: SseEmitter) {
+  async handleConfirm(
+    conversationId: number,
+    confirm: boolean,
+    sseEmitter: SseEmitter,
+  ) {
     const agent = await this.getOrCreateAgent();
 
     const callbacks = [
@@ -274,31 +337,39 @@ export class AiService {
     ];
 
     try {
-      const stream = await agent.stream(
-        new Command({ resume: { confirm } }),
-        {
-          configurable: { thread_id: String(conversationId), sseEmitter },
-          callbacks,
-        },
-      );
+      const stream = await agent.stream(new Command({ resume: { confirm } }), {
+        configurable: { thread_id: String(conversationId), sseEmitter },
+        callbacks,
+      });
 
-      for await (const _chunk of stream) {
-        // SSE events emitted via callbacks and node-internal sseEmitter
+      const streamMessages: BaseMessage[] = [];
+      for await (const rawChunk of stream) {
+        if (rawChunk == null) continue;
+        const chunk: unknown = Array.isArray(rawChunk)
+          ? (rawChunk[2] ?? rawChunk[1] ?? rawChunk)
+          : rawChunk;
+        const msgs = this.extractMessagesFromChunk(
+          chunk as Record<string, unknown>,
+        );
+        if (msgs.length > 0) streamMessages.push(...msgs);
       }
 
-      await this.persistMessages(conversationId);
+      await this.persistMessages(conversationId, streamMessages);
       sseEmitter.emitDone();
     } catch (err: unknown) {
       this.logger.error(`Confirm stream error: ${errMsg(err)}`);
-      sseEmitter.emitError(errMsg(err) || "AI 处理出错，请重试");
+      sseEmitter.emitError(errMsg(err) || 'AI 处理出错，请重试');
     }
   }
 
   // ==================== Agent Factory ====================
 
   private async getOrCreateAgent() {
-    const activeConfig = await this.configRepo.findOne({ where: { isActive: true } });
-    if (!activeConfig) throw new BadRequestException("没有启用的 AI 模型配置，请先在后台配置");
+    const activeConfig = await this.configRepo.findOne({
+      where: { isActive: true },
+    });
+    if (!activeConfig)
+      throw new BadRequestException('没有启用的 AI 模型配置，请先在后台配置');
 
     if (this.agentCache?.configId === activeConfig.id) {
       return this.agentCache.agent;
@@ -306,7 +377,7 @@ export class AiService {
 
     const agent = createAgent({
       llmConfig: {
-        provider: activeConfig.provider as "openai" | "deepseek" | "anthropic",
+        provider: activeConfig.provider,
         model: activeConfig.model,
         apiKey: decrypt(activeConfig.apiKey),
         baseUrl: activeConfig.baseUrl,
@@ -315,11 +386,21 @@ export class AiService {
       },
       services: this.buildToolServices(),
       dangerousToolNames: [
-        "delete_post", "delete_category", "delete_tag",
-        "delete_comment", "delete_friend_link", "delete_guest_message",
-        "delete_announcement", "delete_changelog", "import_data",
+        'delete_post',
+        'delete_category',
+        'delete_tag',
+        'delete_comment',
+        'delete_friend_link',
+        'delete_guest_message',
+        'delete_announcement',
+        'delete_changelog',
+        'import_data',
       ],
-      checkpointer: new RedisCheckpointer(this.getRedis(), "conv_checkpoint:", 86400 * 7),
+      checkpointer: new RedisCheckpointer(
+        this.getRedis(),
+        'conv_checkpoint:',
+        86400 * 7,
+      ),
     });
 
     this.agentCache = { configId: activeConfig.id, agent };
@@ -329,7 +410,7 @@ export class AiService {
   private getRedis(): Redis {
     if (!this.redis) {
       this.redis = new Redis({
-        host: process.env.REDIS_HOST ?? "127.0.0.1",
+        host: process.env.REDIS_HOST ?? '127.0.0.1',
         port: Number(process.env.REDIS_PORT) || 6379,
         maxRetriesPerRequest: null,
       });
@@ -338,8 +419,11 @@ export class AiService {
   }
 
   private async getOrCreateTempAgent() {
-    const activeConfig = await this.configRepo.findOne({ where: { isActive: true } });
-    if (!activeConfig) throw new BadRequestException("没有启用的 AI 模型配置，请先在后台配置");
+    const activeConfig = await this.configRepo.findOne({
+      where: { isActive: true },
+    });
+    if (!activeConfig)
+      throw new BadRequestException('没有启用的 AI 模型配置，请先在后台配置');
 
     if (this.tempAgentCache?.configId === activeConfig.id) {
       return this.tempAgentCache.agent;
@@ -347,7 +431,7 @@ export class AiService {
 
     const agent = createAgent({
       llmConfig: {
-        provider: activeConfig.provider as "openai" | "deepseek" | "anthropic",
+        provider: activeConfig.provider,
         model: activeConfig.model,
         apiKey: decrypt(activeConfig.apiKey),
         baseUrl: activeConfig.baseUrl,
@@ -356,11 +440,21 @@ export class AiService {
       },
       services: this.buildToolServices(),
       dangerousToolNames: [
-        "delete_post", "delete_category", "delete_tag",
-        "delete_comment", "delete_friend_link", "delete_guest_message",
-        "delete_announcement", "delete_changelog", "import_data",
+        'delete_post',
+        'delete_category',
+        'delete_tag',
+        'delete_comment',
+        'delete_friend_link',
+        'delete_guest_message',
+        'delete_announcement',
+        'delete_changelog',
+        'import_data',
       ],
-      checkpointer: new RedisCheckpointer(this.getRedis(), "temp_checkpoint:", 3600),
+      checkpointer: new RedisCheckpointer(
+        this.getRedis(),
+        'temp_checkpoint:',
+        3600,
+      ),
     });
 
     this.tempAgentCache = { configId: activeConfig.id, agent };
@@ -381,7 +475,8 @@ export class AiService {
         create: (args) => this.postService.create(asDto(args), auth()),
         update: (id, args) => this.postService.update(id, asDto(args)),
         delete: (id) => this.postService.remove(id),
-        publish: (id) => this.postService.updateStatus(id, PostStatus.PUBLISHED),
+        publish: (id) =>
+          this.postService.updateStatus(id, PostStatus.PUBLISHED),
         unpublish: (id) => this.postService.updateStatus(id, PostStatus.DRAFT),
         top: (id) => this.postService.updateTop(id, true),
         untop: (id) => this.postService.updateTop(id, false),
@@ -400,24 +495,47 @@ export class AiService {
       },
       commentService: {
         findPage: (args) => this.commentService.paginateForAdmin(asDto(args)),
-        approve: (id) => this.commentService.updateStatus(id, CommentStatus.APPROVED),
-        reject: (id) => this.commentService.updateStatus(id, CommentStatus.REJECTED),
-        reply: (id, content) => this.commentService.create(asDto({ content, postId: 0, parentId: id })),
+        approve: (id) =>
+          this.commentService.updateStatus(id, CommentStatus.APPROVED),
+        reject: (id) =>
+          this.commentService.updateStatus(id, CommentStatus.REJECTED),
+        reply: (id, content) =>
+          this.commentService.create(
+            asDto({ content, postId: 0, parentId: id }),
+          ),
         delete: (id) => this.commentService.remove(id),
       },
       friendLinkService: {
-        findAll: (status) => this.friendLinkService.findAll(status as Parameters<FriendLinkService["findAll"]>[0]),
-        approve: (id) => this.friendLinkService.updateStatus(id, asDto({ status: "approved" })),
-        reject: (id) => this.friendLinkService.updateStatus(id, asDto({ status: "rejected" })),
+        findAll: (status) =>
+          this.friendLinkService.findAll(
+            status as Parameters<FriendLinkService['findAll']>[0],
+          ),
+        approve: (id) =>
+          this.friendLinkService.updateStatus(
+            id,
+            asDto({ status: 'approved' }),
+          ),
+        reject: (id) =>
+          this.friendLinkService.updateStatus(
+            id,
+            asDto({ status: 'rejected' }),
+          ),
         delete: (id) => this.friendLinkService.remove(id),
       },
       guestMessageService: {
-        findPage: (args) => this.guestMessageService.paginateForAdmin(asDto(args)),
-        reply: (id, _content) => this.guestMessageService.updateStatus(id, "replied" as Parameters<GuestMessageService["updateStatus"]>[1]),
+        findPage: (args) =>
+          this.guestMessageService.paginateForAdmin(asDto(args)),
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        reply: (id, _content) =>
+          this.guestMessageService.updateStatus(
+            id,
+            'replied' as Parameters<GuestMessageService['updateStatus']>[1],
+          ),
         delete: (id) => this.guestMessageService.remove(id),
       },
       announcementService: {
-        findPage: (args) => this.announcementService.paginateForAdmin(asDto(args)),
+        findPage: (args) =>
+          this.announcementService.paginateForAdmin(asDto(args)),
         create: (args) => this.announcementService.create(asDto(args)),
         delete: (id) => this.announcementService.remove(id),
       },
@@ -444,12 +562,18 @@ export class AiService {
       },
       visitorService: {
         getDashboardStats: () => this.visitorService.getDashboardStats(),
-        paginateForAdmin: (args) => this.visitorService.paginateForAdmin(asDto(args)),
+        paginateForAdmin: (args) =>
+          this.visitorService.paginateForAdmin(asDto(args)),
         getOnlineStats: () => this.visitorService.getOnlineStats(),
       },
       dataTransferService: {
-        exportAllToZip: () => this.dataTransferService.exportAllToZip(asDto({})),
-        importAllFromZip: (data) => this.dataTransferService.importAllFromZip(data, asDto({ clearExisting: true })),
+        exportAllToZip: () =>
+          this.dataTransferService.exportAllToZip(asDto({})),
+        importAllFromZip: (data) =>
+          this.dataTransferService.importAllFromZip(
+            data,
+            asDto({ clearExisting: true }),
+          ),
       },
       ossService: {
         signUrl: (key) => this.ossService.signUrl(key),
@@ -458,11 +582,18 @@ export class AiService {
         get: (key) => this.getRedis().get(key),
         set: (key, value, ttlSeconds) => {
           if (ttlSeconds) {
-            return this.getRedis().setex(key, ttlSeconds, value).then(() => {});
+            return this.getRedis()
+              .setex(key, ttlSeconds, value)
+              .then(() => {});
           }
-          return this.getRedis().set(key, value).then(() => {});
+          return this.getRedis()
+            .set(key, value)
+            .then(() => {});
         },
-        del: (key) => this.getRedis().del(key).then(() => {}),
+        del: (key) =>
+          this.getRedis()
+            .del(key)
+            .then(() => {}),
         keys: (pattern) => this.getRedis().keys(pattern),
       },
       memoryService: {
@@ -476,12 +607,15 @@ export class AiService {
 
   // ==================== Conversation ====================
 
-  private async getOrCreateConversation(conversationId: number | null, userId: number) {
+  private async getOrCreateConversation(
+    conversationId: number | null,
+    userId: number,
+  ) {
     if (conversationId) {
       const conv = await this.conversationRepo.findOne({
         where: { id: conversationId, userId },
       });
-      if (!conv) throw new NotFoundException("会话不存在");
+      if (!conv) throw new NotFoundException('会话不存在');
       return conv;
     }
     const conv = this.conversationRepo.create({ userId, messages: [] });
@@ -490,15 +624,15 @@ export class AiService {
 
   async getConversations(userId: number, page = 1, limit = 20) {
     const qb = this.conversationRepo
-      .createQueryBuilder("c")
-      .where("c.userId = :userId", { userId })
-      .orderBy("c.updatedAt", "DESC");
-    const result = await paginateQueryBuilder(qb, { page, limit });
+      .createQueryBuilder('c')
+      .where('c.userId = :userId', { userId })
+      .orderBy('c.updatedAt', 'DESC');
+    const result = await paginateQueryBuilderForAdmin(qb, { page, limit });
     return {
       ...result,
-      items: ((result as unknown as AdminPaginationResponse<Conversation>).items ?? []).map((c: Conversation) => ({
+      items: result.items.map((c: Conversation) => ({
         id: c.id,
-        title: c.title ?? "新对话",
+        title: c.title ?? '新对话',
         lastMessagePreview: this.getLastMessagePreview(c),
         createdAt: c.createdAt,
         updatedAt: c.updatedAt,
@@ -508,60 +642,62 @@ export class AiService {
 
   async getConversation(id: number, userId: number) {
     const conv = await this.conversationRepo.findOne({ where: { id, userId } });
-    if (!conv) throw new NotFoundException("会话不存在");
+    if (!conv) throw new NotFoundException('会话不存在');
     return conv;
   }
 
   async deleteConversation(id: number, userId: number) {
     const conv = await this.conversationRepo.findOne({ where: { id, userId } });
-    if (!conv) throw new NotFoundException("会话不存在");
+    if (!conv) throw new NotFoundException('会话不存在');
     await this.conversationRepo.remove(conv);
   }
 
   private getLastMessagePreview(conv: Conversation): string {
     const msgs = conv.messages ?? [];
     for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].role !== "system") {
-        return (msgs[i].content ?? "").slice(0, 50);
+      const msg = msgs[i];
+      if (msg.role === 'system') continue;
+
+      if (msg.content && msg.content.trim()) {
+        return msg.content.slice(0, 50);
+      }
+
+      if (msg.toolCalls && msg.toolCalls.length > 0) {
+        return `[调用工具: ${msg.toolCalls[0].name}]`;
+      }
+
+      if (msg.role === 'tool') {
+        return '[工具返回]';
       }
     }
-    return "";
+    return '';
   }
 
-  private async persistMessages(conversationId: number) {
+  private async persistMessages(
+    conversationId: number,
+    newMessages: BaseMessage[],
+  ) {
     try {
-      const agent = await this.getOrCreateAgent();
-      const state = await agent.getState({
-        configurable: { thread_id: String(conversationId) },
+      const newFormatted = this.toConversationMessages(newMessages);
+
+      const conv = await this.conversationRepo.findOne({
+        where: { id: conversationId },
+        select: ['messages'],
       });
+      const existing = conv?.messages ?? [];
+      const combined = [...existing, ...newFormatted];
 
-      const rawMessages = (state?.values?.messages ?? []) as BaseMessage[];
-      const messages = rawMessages.map((m) => ({
-        role: this.mapMessageRole(m),
-        content: typeof m.content === "string"
-          ? m.content
-          : JSON.stringify(m.content ?? ""),
-        toolCalls: (m as AIMessage).tool_calls?.map((tc) => ({
-          name: tc.name ?? "",
-          args: tc.args ?? {},
-          id: tc.id ?? "",
-        })),
-        createdAt: new Date().toISOString(),
-      }));
+      await this.conversationRepo.update({ id: conversationId }, {
+        messages: combined,
+        updatedAt: new Date(),
+      } as Parameters<typeof this.conversationRepo.update>[1]);
 
-      // MySQL persistent
-      await this.conversationRepo.update(
-        { id: conversationId },
-        { messages, updatedAt: new Date() } as Parameters<typeof this.conversationRepo.update>[1],
-      );
-
-      // Redis hot cache (last 20 messages, 24h TTL)
       try {
         const redis = this.getRedis();
         await redis.setex(
           `conversation:messages:${conversationId}`,
           86400,
-          JSON.stringify(messages.slice(-20)),
+          JSON.stringify(combined.slice(-20)),
         );
       } catch {
         // Redis is optional for persistent conversations
@@ -572,27 +708,88 @@ export class AiService {
   }
 
   private mapMessageRole(m: BaseMessage): string {
-    const type = m._getType?.() ?? m.getType?.() ?? "";
-    if (type === "human" || type === "user") return "user";
-    if (type === "ai" || type === "assistant") return "assistant";
-    if (type === "tool") return "tool";
-    if (type === "system") return "system";
-    return "assistant";
+    const type = m._getType?.() ?? m.getType?.() ?? '';
+    if (type === 'human' || type === 'user') return 'user';
+    if (type === 'ai' || type === 'assistant') return 'assistant';
+    if (type === 'tool') return 'tool';
+    if (type === 'system') return 'system';
+    return 'assistant';
   }
 
-  private async generateTitle(conversationId: number) {
+  private extractMessagesFromChunk(
+    chunk: Record<string, unknown>,
+  ): BaseMessage[] {
+    for (const nodeName of Object.keys(chunk)) {
+      const update = chunk[nodeName];
+      if (update == null || typeof update !== 'object') continue;
+      if (Array.isArray(update)) return update as BaseMessage[];
+      const val = update as Record<string, unknown>;
+      // { messages: [...] } at top level ("values" mode)
+      if (Array.isArray(val.messages)) return val.messages as BaseMessage[];
+      // { nodeName: { messages: [...] } } ("updates" mode)
+      for (const innerKey of Object.keys(val)) {
+        const inner = val[innerKey];
+        if (
+          inner != null &&
+          typeof inner === 'object' &&
+          Array.isArray((inner as Record<string, unknown>).messages)
+        ) {
+          return (inner as Record<string, unknown>).messages as BaseMessage[];
+        }
+      }
+    }
+    return [];
+  }
+
+  private toConversationMessages(
+    rawMessages: BaseMessage[],
+  ): ConversationMessage[] {
+    return rawMessages
+      .filter((m) => m != null)
+      .map((m) => {
+        const role = this.mapMessageRole(m);
+        const entry: ConversationMessage = {
+          role: role as ConversationMessage['role'],
+          content:
+            typeof m.content === 'string'
+              ? m.content
+              : JSON.stringify(m.content ?? ''),
+          createdAt: new Date().toISOString(),
+        };
+
+        if (role === 'assistant') {
+          const tc = (m as AIMessage).tool_calls;
+          if (tc && tc.length > 0) {
+            entry.toolCalls = tc.map((t) => ({
+              name: t.name ?? '',
+              args: t.args ?? {},
+              id: t.id ?? '',
+            }));
+          }
+        }
+
+        return entry;
+      });
+  }
+
+  private async generateTitle(
+    conversationId: number,
+    firstUserMessage: string,
+  ) {
     try {
-      const conv = await this.conversationRepo.findOne({ where: { id: conversationId } });
+      const conv = await this.conversationRepo.findOne({
+        where: { id: conversationId },
+        select: ['title'],
+      });
       if (!conv || conv.title) return;
 
-      const firstUserMsg = (conv.messages ?? []).find((m) => m.role === "user");
-      if (!firstUserMsg) return;
-
-      const activeConfig = await this.configRepo.findOne({ where: { isActive: true } });
+      const activeConfig = await this.configRepo.findOne({
+        where: { isActive: true },
+      });
       if (!activeConfig) return;
 
       const model = createChatModel({
-        provider: activeConfig.provider as "openai" | "deepseek" | "anthropic",
+        provider: activeConfig.provider,
         model: activeConfig.model,
         apiKey: decrypt(activeConfig.apiKey),
         baseUrl: activeConfig.baseUrl,
@@ -601,16 +798,15 @@ export class AiService {
       });
 
       const resp = await model.invoke([
-        new SystemMessage("为以下对话生成简短标题（10字以内），直接输出标题，不要加引号、标点或解释。"),
-        new HumanMessage(firstUserMsg.content.slice(0, 200)),
+        new SystemMessage(
+          '为以下对话生成简短标题（10字以内），直接输出标题，不要加引号、标点或解释。',
+        ),
+        new HumanMessage(firstUserMessage.slice(0, 200)),
       ]);
 
       const title = (resp.content as string).trim().slice(0, 50);
 
-      await this.conversationRepo.update(
-        { id: conversationId },
-        { title },
-      );
+      await this.conversationRepo.update({ id: conversationId }, { title });
     } catch (error: unknown) {
       this.logger.warn(`生成会话标题失败: ${errMsg(error)}`);
     }
@@ -619,7 +815,9 @@ export class AiService {
   // ==================== Config CRUD ====================
 
   async getConfigs() {
-    const configs = await this.configRepo.find({ order: { createdAt: "DESC" } });
+    const configs = await this.configRepo.find({
+      order: { createdAt: 'DESC' },
+    });
     return configs.map((c) => ({ ...c, apiKey: maskKey(decrypt(c.apiKey)) }));
   }
 
@@ -629,7 +827,7 @@ export class AiService {
   }
 
   private async createConfig(dto: SaveAiConfigDto) {
-    if (!dto.apiKey) throw new BadRequestException("API Key 为必填项");
+    if (!dto.apiKey) throw new BadRequestException('API Key 为必填项');
     const config = this.configRepo.create({
       ...dto,
       apiKey: encrypt(dto.apiKey),
@@ -642,7 +840,7 @@ export class AiService {
 
   private async updateConfig(id: number, dto: SaveAiConfigDto) {
     const config = await this.configRepo.findOne({ where: { id } });
-    if (!config) throw new NotFoundException("配置不存在");
+    if (!config) throw new NotFoundException('配置不存在');
     if (dto.apiKey) {
       dto.apiKey = encrypt(dto.apiKey);
     } else {
@@ -654,14 +852,15 @@ export class AiService {
 
   async deleteConfig(id: number) {
     const config = await this.configRepo.findOne({ where: { id } });
-    if (!config) throw new NotFoundException("配置不存在");
-    if (config.isActive) throw new BadRequestException("不能删除已启用的配置，请先切换到其他配置");
+    if (!config) throw new NotFoundException('配置不存在');
+    if (config.isActive)
+      throw new BadRequestException('不能删除已启用的配置，请先切换到其他配置');
     await this.configRepo.delete(id);
   }
 
   async activateConfig(id: number) {
     const target = await this.configRepo.findOne({ where: { id } });
-    if (!target) throw new NotFoundException("配置不存在");
+    if (!target) throw new NotFoundException('配置不存在');
     await this.configRepo.manager.transaction(async (manager) => {
       await manager
         .getRepository(AiConfig)
@@ -678,18 +877,34 @@ export class AiService {
   // ==================== Usage ====================
 
   async getUsage(query: UsageQueryDto) {
-    const qb = this.usageRepo.createQueryBuilder("log").orderBy("log.createdAt", "DESC");
-    if (query.model) qb.andWhere("log.model = :model", { model: query.model });
-    if (query.startDate) qb.andWhere("log.createdAt >= :startDate", { startDate: query.startDate });
-    if (query.endDate) qb.andWhere("log.createdAt <= :endDate", { endDate: query.endDate });
+    const qb = this.usageRepo
+      .createQueryBuilder('log')
+      .orderBy('log.createdAt', 'DESC');
+    if (query.model) qb.andWhere('log.model = :model', { model: query.model });
+    if (query.startDate)
+      qb.andWhere('log.createdAt >= :startDate', {
+        startDate: query.startDate,
+      });
+    if (query.endDate)
+      qb.andWhere('log.createdAt <= :endDate', { endDate: query.endDate });
 
     const statsQb = qb.clone();
-    const pagination = await paginateQueryBuilder(qb, { page: query.page, limit: query.limit });
+    const pagination = await paginateQueryBuilder(qb, {
+      page: query.page,
+      limit: query.limit,
+    });
     const stats = await statsQb
-      .select("COUNT(log.id)", "totalCalls")
-      .addSelect("COALESCE(SUM(log.promptTokens), 0)", "totalPromptTokens")
-      .addSelect("COALESCE(SUM(log.completionTokens), 0)", "totalCompletionTokens")
-      .getRawOne<{ totalCalls: string; totalPromptTokens: string; totalCompletionTokens: string }>();
+      .select('COUNT(log.id)', 'totalCalls')
+      .addSelect('COALESCE(SUM(log.promptTokens), 0)', 'totalPromptTokens')
+      .addSelect(
+        'COALESCE(SUM(log.completionTokens), 0)',
+        'totalCompletionTokens',
+      )
+      .getRawOne<{
+        totalCalls: string;
+        totalPromptTokens: string;
+        totalCompletionTokens: string;
+      }>();
 
     return {
       ...pagination,

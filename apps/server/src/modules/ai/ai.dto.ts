@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
@@ -10,12 +10,11 @@ import {
   Min,
   MinLength,
   ValidateIf,
-} from "class-validator";
+} from 'class-validator';
 
-import { PaginationQueryDto } from "@/common";
+import { PaginationQueryDto } from '@/common';
 
-import { AiProvider } from "./ai-config.entity";
-import { AiAction } from "./ai-usage.entity";
+import { AiProvider } from './ai-config.entity';
 
 export class SaveAiConfigDto {
   @IsOptional()
@@ -34,7 +33,7 @@ export class SaveAiConfigDto {
   @MinLength(1)
   model: string;
 
-  @ValidateIf((o: SaveAiConfigDto) => o.apiKey !== "" && o.apiKey !== undefined)
+  @ValidateIf((o: SaveAiConfigDto) => o.apiKey !== '' && o.apiKey !== undefined)
   @IsString()
   @MinLength(1)
   apiKey?: string;

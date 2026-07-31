@@ -10,33 +10,38 @@ import {
   Req,
   Res,
   UseGuards,
-} from "@nestjs/common";
-import { Throttle } from "@nestjs/throttler";
-import type { Request, Response } from "express";
+} from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+
+import { JwtAuthGuard, SuperAdminGuard } from '@/common';
+
+import { ChatDto, ConfirmDto, SaveAiConfigDto, UsageQueryDto } from './ai.dto';
+import { AiService, type SseEmitter } from './ai.service';
+
+import type { Request, Response } from 'express';
 
 interface AuthRequest extends Request {
   user?: { id: number; username: string; role?: number };
 }
 
-import { JwtAuthGuard, SuperAdminGuard } from "@/common";
-
-import { ChatDto, ConfirmDto, SaveAiConfigDto, UsageQueryDto } from "./ai.dto";
-import { AiService, type SseEmitter } from "./ai.service";
-
-@Controller("ai")
+@Controller('ai')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   // ---- Chat (SSE) ----
 
-  @Post("chat")
+  @Post('chat')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60000, limit: 20 } })
-  async chat(@Body() dto: ChatDto, @Res() res: Response, @Req() req: AuthRequest) {
+  async chat(
+    @Body() dto: ChatDto,
+    @Res() res: Response,
+    @Req() req: AuthRequest,
+  ) {
     this.setupSse(res);
 
     const emitter = this.createSseEmitter(res);
-    const authHeader = req.headers.authorization ?? "";
+    const authHeader = req.headers.authorization ?? '';
 
     try {
       await this.aiService.handleChat(
@@ -55,10 +60,10 @@ export class AiController {
 
   // ---- Confirm ----
 
-  @Post("chat/:conversationId/confirm")
+  @Post('chat/:conversationId/confirm')
   @UseGuards(JwtAuthGuard)
   async confirm(
-    @Param("conversationId") conversationId: number,
+    @Param('conversationId') conversationId: number,
     @Body() dto: ConfirmDto,
     @Res() res: Response,
   ) {
@@ -76,12 +81,12 @@ export class AiController {
 
   // ---- Conversations ----
 
-  @Get("conversations")
+  @Get('conversations')
   @UseGuards(JwtAuthGuard)
   async getConversations(
     @Req() req: AuthRequest,
-    @Query("page") page?: number,
-    @Query("limit") limit?: number,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
   ) {
     return this.aiService.getConversations(
       req.user?.id ?? 0,
@@ -90,48 +95,48 @@ export class AiController {
     );
   }
 
-  @Get("conversations/:id")
+  @Get('conversations/:id')
   @UseGuards(JwtAuthGuard)
-  async getConversation(@Param("id") id: number, @Req() req: AuthRequest) {
+  async getConversation(@Param('id') id: number, @Req() req: AuthRequest) {
     return this.aiService.getConversation(id, req.user?.id ?? 0);
   }
 
-  @Delete("conversations/:id")
+  @Delete('conversations/:id')
   @UseGuards(JwtAuthGuard)
-  async deleteConversation(@Param("id") id: number, @Req() req: AuthRequest) {
+  async deleteConversation(@Param('id') id: number, @Req() req: AuthRequest) {
     await this.aiService.deleteConversation(id, req.user?.id ?? 0);
     return { success: true };
   }
 
   // ---- Configs (保留) ----
 
-  @Get("configs")
+  @Get('configs')
   @UseGuards(JwtAuthGuard)
   getConfigs() {
     return this.aiService.getConfigs();
   }
 
-  @Post("configs/save")
+  @Post('configs/save')
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
   saveConfig(@Body() dto: SaveAiConfigDto) {
     return this.aiService.saveConfig(dto);
   }
 
-  @Delete("configs/:id")
+  @Delete('configs/:id')
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
-  deleteConfig(@Param("id") id: number) {
+  deleteConfig(@Param('id') id: number) {
     return this.aiService.deleteConfig(id);
   }
 
-  @Patch("configs/:id/activate")
+  @Patch('configs/:id/activate')
   @UseGuards(JwtAuthGuard, SuperAdminGuard)
-  activateConfig(@Param("id") id: number) {
+  activateConfig(@Param('id') id: number) {
     return this.aiService.activateConfig(id);
   }
 
   // ---- Usage (保留) ----
 
-  @Get("usage")
+  @Get('usage')
   @UseGuards(JwtAuthGuard)
   getUsage(@Query() query: UsageQueryDto) {
     return this.aiService.getUsage(query);
@@ -140,32 +145,44 @@ export class AiController {
   // ---- Helpers ----
 
   private setupSse(res: Response) {
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no");
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
   }
 
   private createSseEmitter(res: Response): SseEmitter {
     return {
       emitToken: (content) => {
-        res.write(`event: token\ndata: ${JSON.stringify({ type: "token", content })}\n\n`);
+        res.write(
+          `event: token\ndata: ${JSON.stringify({ type: 'token', content })}\n\n`,
+        );
       },
       emitToolCall: (tool, args) => {
-        res.write(`event: tool_call\ndata: ${JSON.stringify({ type: "tool_call", tool, args })}\n\n`);
+        res.write(
+          `event: tool_call\ndata: ${JSON.stringify({ type: 'tool_call', tool, args })}\n\n`,
+        );
       },
       emitToolResult: (tool, result) => {
-        res.write(`event: tool_result\ndata: ${JSON.stringify({ type: "tool_result", tool, result })}\n\n`);
+        res.write(
+          `event: tool_result\ndata: ${JSON.stringify({ type: 'tool_result', tool, result })}\n\n`,
+        );
       },
       emitConfirm: (tool, args, message) => {
-        res.write(`event: confirm\ndata: ${JSON.stringify({ type: "confirm", tool, args, message })}\n\n`);
+        res.write(
+          `event: confirm\ndata: ${JSON.stringify({ type: 'confirm', tool, args, message })}\n\n`,
+        );
       },
       emitDone: (threadId) => {
-        res.write(`event: done\ndata: ${JSON.stringify({ type: "done", threadId: threadId ?? null })}\n\n`);
+        res.write(
+          `event: done\ndata: ${JSON.stringify({ type: 'done', threadId: threadId ?? null })}\n\n`,
+        );
         res.end();
       },
       emitError: (message) => {
-        res.write(`event: error\ndata: ${JSON.stringify({ type: "error", message })}\n\n`);
+        res.write(
+          `event: error\ndata: ${JSON.stringify({ type: 'error', message })}\n\n`,
+        );
         res.end();
       },
     };
