@@ -2,8 +2,10 @@ import crypto from 'node:crypto';
 
 import {
   createAgent,
+  createEditorAgent,
   RedisCheckpointer,
   SYSTEM_PROMPT,
+  ARTICLE_EDITOR_PROMPT,
   HumanMessage,
   SystemMessage,
   AIMessage,
@@ -11,6 +13,7 @@ import {
   Command,
   createChatModel,
   type ToolServices,
+  type EditorToolServices,
 } from '@blog/ai-agent';
 import {
   BadRequestException,
@@ -43,7 +46,7 @@ import { VisitorService } from '@/modules/visitor/visitor.service';
 
 import { AiConfig } from './ai-config.entity';
 import { AiAction, AiUsage } from './ai-usage.entity';
-import { SaveAiConfigDto, UsageQueryDto } from './ai.dto';
+import { EditorStateDto, SaveAiConfigDto, UsageQueryDto } from './ai.dto';
 import { Conversation, type ConversationMessage } from './conversation.entity';
 import { MemoryService } from './memory.service';
 
@@ -123,6 +126,10 @@ export class AiService {
     agent: ReturnType<typeof createAgent>;
   } | null = null;
   private tempAgentCache: {
+    configId: number;
+    agent: ReturnType<typeof createAgent>;
+  } | null = null;
+  private editorAgentCache: {
     configId: number;
     agent: ReturnType<typeof createAgent>;
   } | null = null;
@@ -605,6 +612,223 @@ export class AiService {
     };
   }
 
+  // ==================== Editor Agent ====================
+
+  async handleEditorChat(
+    message: string,
+    editorState: EditorStateDto,
+    conversationId: number | null,
+    userId: number,
+    sseEmitter: SseEmitter,
+  ) {
+    this.requestUserId = userId;
+    const startTime = Date.now();
+
+    if (message.length > 8000) {
+      sseEmitter.emitError('消息过长，请控制在 8000 字以内');
+      return;
+    }
+
+    const conversation = await this.getOrCreateConversation(
+      conversationId,
+      userId,
+    );
+    const agent = await this.getOrCreateEditorAgent();
+    const activeConfig = await this.configRepo.findOne({
+      where: { isActive: true },
+    });
+    const activeConfigId = activeConfig?.id;
+
+    const editorContext = this.formatEditorContext(editorState);
+    const isNew = !conversation.checkpoint;
+
+    const messages: BaseMessage[] = isNew
+      ? [
+          new SystemMessage(ARTICLE_EDITOR_PROMPT),
+          new SystemMessage(editorContext),
+          new HumanMessage(message),
+        ]
+      : [new SystemMessage(editorContext), new HumanMessage(message)];
+
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+
+    const callbacks = [
+      {
+        handleLLMNewToken(token: string) {
+          sseEmitter.emitToken(token);
+        },
+        handleLLMEnd(output: unknown) {
+          const llmOutput = output as {
+            generations?: {
+              [k: number]: {
+                [k: number]: {
+                  message?: {
+                    usage_metadata?: {
+                      input_tokens?: number;
+                      output_tokens?: number;
+                    };
+                  };
+                };
+              };
+            };
+          };
+          const usage =
+            llmOutput?.generations?.[0]?.[0]?.message?.usage_metadata;
+          if (usage) {
+            totalInputTokens += usage.input_tokens ?? 0;
+            totalOutputTokens += usage.output_tokens ?? 0;
+          }
+        },
+      },
+    ];
+
+    try {
+      const stream = await agent.stream(
+        { messages },
+        {
+          configurable: { thread_id: String(conversation.id), sseEmitter },
+          callbacks,
+        },
+      );
+
+      const streamMessages: BaseMessage[] = [];
+      for await (const rawChunk of stream) {
+        if (rawChunk == null) continue;
+        const chunk: unknown = Array.isArray(rawChunk)
+          ? (rawChunk[2] ?? rawChunk[1] ?? rawChunk)
+          : rawChunk;
+        const msgs = this.extractMessagesFromChunk(
+          chunk as Record<string, unknown>,
+        );
+        if (msgs.length > 0) streamMessages.push(...msgs);
+      }
+
+      const allNewMessages = [...messages, ...streamMessages];
+      await this.persistMessages(conversation.id, allNewMessages);
+
+      if (!conversation.title) {
+        setImmediate(() => {
+          void this.generateTitle(conversation.id, message);
+        });
+      }
+
+      sseEmitter.emitDone();
+    } catch (err: unknown) {
+      this.logger.error(`Editor agent stream error: ${errMsg(err)}`);
+      sseEmitter.emitError(errMsg(err) || 'AI 处理出错，请重试');
+    } finally {
+      if ((totalInputTokens > 0 || totalOutputTokens > 0) && activeConfigId) {
+        setImmediate(() => {
+          void this.usageRepo
+            .save({
+              configId: activeConfigId,
+              model: activeConfig?.model ?? '',
+              promptTokens: totalInputTokens,
+              completionTokens: totalOutputTokens,
+              latencyMs: Date.now() - startTime,
+              action: AiAction.CHAT,
+            } as AiUsage)
+            .catch(() => {});
+        });
+      }
+    }
+  }
+
+  async handleEditorConfirm(
+    conversationId: number,
+    confirm: boolean,
+    sseEmitter: SseEmitter,
+  ) {
+    const agent = await this.getOrCreateEditorAgent();
+
+    const callbacks = [
+      {
+        handleLLMNewToken(token: string) {
+          sseEmitter.emitToken(token);
+        },
+      },
+    ];
+
+    try {
+      const stream = await agent.stream(new Command({ resume: { confirm } }), {
+        configurable: { thread_id: String(conversationId), sseEmitter },
+        callbacks,
+      });
+
+      const streamMessages: BaseMessage[] = [];
+      for await (const rawChunk of stream) {
+        if (rawChunk == null) continue;
+        const chunk: unknown = Array.isArray(rawChunk)
+          ? (rawChunk[2] ?? rawChunk[1] ?? rawChunk)
+          : rawChunk;
+        const msgs = this.extractMessagesFromChunk(
+          chunk as Record<string, unknown>,
+        );
+        if (msgs.length > 0) streamMessages.push(...msgs);
+      }
+
+      await this.persistMessages(conversationId, streamMessages);
+      sseEmitter.emitDone();
+    } catch (err: unknown) {
+      this.logger.error(`Editor confirm stream error: ${errMsg(err)}`);
+      sseEmitter.emitError(errMsg(err) || 'AI 处理出错，请重试');
+    }
+  }
+
+  private async getOrCreateEditorAgent() {
+    const activeConfig = await this.configRepo.findOne({
+      where: { isActive: true },
+    });
+    if (!activeConfig)
+      throw new BadRequestException('没有启用的 AI 模型配置，请先在后台配置');
+
+    if (this.editorAgentCache?.configId === activeConfig.id) {
+      return this.editorAgentCache.agent;
+    }
+
+    const agent = createEditorAgent({
+      llmConfig: {
+        provider: activeConfig.provider,
+        model: activeConfig.model,
+        apiKey: decrypt(activeConfig.apiKey),
+        baseUrl: activeConfig.baseUrl,
+        maxTokens: activeConfig.maxTokens,
+        temperature: Number(activeConfig.temperature),
+      },
+      services: this.buildEditorToolServices(),
+      checkpointer: new RedisCheckpointer(
+        this.getRedis(),
+        'editor_checkpoint:',
+        86400 * 7,
+      ),
+    });
+
+    this.editorAgentCache = { configId: activeConfig.id, agent };
+    return agent;
+  }
+
+  private buildEditorToolServices(): EditorToolServices {
+    return {
+      categoryService: {
+        findAll: () => this.categoryService.findAll(),
+      },
+      tagService: {
+        findAll: () => this.tagService.findAll(),
+      },
+    };
+  }
+
+  private formatEditorContext(state: EditorStateDto): string {
+    return `[当前编辑器状态]
+标题: ${state.title || '(空)'}
+内容: ${state.content || '(空)'}
+摘要: ${state.summary || '(空)'}
+分类: ${state.categoryName || '(空)'}
+标签: ${state.tagNames?.join(', ') || '(空)'}
+封面图: ${state.coverImage || '(空)'}`;
+  }
+
   // ==================== Conversation ====================
 
   private async getOrCreateConversation(
@@ -871,6 +1095,8 @@ export class AiService {
       await manager.update(AiConfig, id, { isActive: true });
     });
     this.agentCache = null;
+    this.tempAgentCache = null;
+    this.editorAgentCache = null;
     return { message: `已切换到 ${target.name}` };
   }
 

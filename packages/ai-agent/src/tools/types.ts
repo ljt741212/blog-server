@@ -188,6 +188,14 @@ export interface ToolServices {
 
 export type ToolFactory = (services: ToolServices) => StructuredTool;
 
+// Minimal read-only services for article editor agent
+export interface EditorToolServices {
+  categoryService: Pick<CategoryService, "findAll">;
+  tagService: Pick<TagService, "findAll">;
+}
+
+export type EditorToolFactory = (services: EditorToolServices) => StructuredTool;
+
 export interface LlmConfig {
   provider: "openai" | "deepseek" | "anthropic";
   model: string;

@@ -15,7 +15,13 @@ import { Throttle } from '@nestjs/throttler';
 
 import { JwtAuthGuard, SuperAdminGuard } from '@/common';
 
-import { ChatDto, ConfirmDto, SaveAiConfigDto, UsageQueryDto } from './ai.dto';
+import {
+  ChatDto,
+  ConfirmDto,
+  EditorChatDto,
+  SaveAiConfigDto,
+  UsageQueryDto,
+} from './ai.dto';
 import { AiService, type SseEmitter } from './ai.service';
 
 import type { Request, Response } from 'express';
@@ -140,6 +146,71 @@ export class AiController {
   @UseGuards(JwtAuthGuard)
   getUsage(@Query() query: UsageQueryDto) {
     return this.aiService.getUsage(query);
+  }
+
+  // ---- Article Editor ----
+
+  @Post('article-editor/chat')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
+  async editorChat(
+    @Body() dto: EditorChatDto,
+    @Res() res: Response,
+    @Req() req: AuthRequest,
+  ) {
+    this.setupSse(res);
+
+    const emitter = this.createSseEmitter(res);
+
+    try {
+      await this.aiService.handleEditorChat(
+        dto.message,
+        dto.editorState,
+        dto.conversationId ?? null,
+        req.user?.id ?? 0,
+        emitter,
+      );
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      emitter.emitError(msg);
+    }
+  }
+
+  @Post('article-editor/chat/:conversationId/confirm')
+  @UseGuards(JwtAuthGuard)
+  async editorConfirm(
+    @Param('conversationId') conversationId: number,
+    @Body() dto: ConfirmDto,
+    @Res() res: Response,
+  ) {
+    this.setupSse(res);
+
+    const emitter = this.createSseEmitter(res);
+
+    try {
+      await this.aiService.handleEditorConfirm(
+        conversationId,
+        dto.confirm,
+        emitter,
+      );
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      emitter.emitError(msg);
+    }
+  }
+
+  @Get('article-editor/conversations')
+  @UseGuards(JwtAuthGuard)
+  async getEditorConversations(
+    @Req() req: AuthRequest,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.aiService.getConversations(
+      req.user?.id ?? 0,
+      page ?? 1,
+      limit ?? 20,
+    );
   }
 
   // ---- Helpers ----

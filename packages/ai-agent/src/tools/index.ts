@@ -1,12 +1,12 @@
 import { StructuredTool } from "@langchain/core/tools";
-import type { ToolFactory, ToolServices } from "./types";
+import type { ToolFactory, ToolServices, EditorToolFactory, EditorToolServices } from "./types";
 
-export { type ToolFactory, type ToolServices, type LlmConfig, type AgentConfig } from "./types";
+export { type ToolFactory, type ToolServices, type EditorToolFactory, type EditorToolServices, type LlmConfig, type AgentConfig } from "./types";
 
-// ---- post (9) ----
+// ---- post (7, without create/update) ----
 import {
-  createSearchPostsTool, createGetPostTool, createCreatePostTool,
-  createUpdatePostTool, createDeletePostTool,
+  createSearchPostsTool, createGetPostTool,
+  createDeletePostTool,
   createPublishPostTool, createUnpublishPostTool,
   createTopPostTool, createUntopPostTool,
 } from "./post.tool";
@@ -74,13 +74,13 @@ import { createExportDataTool, createImportDataTool } from "./data-transfer.tool
 // ---- oss (1) ----
 import { createGetOssSignUrlTool } from "./oss.tool";
 
-// ---- writing (10) ----
+// ---- writing (9, without seo_meta) ----
 import {
   createContinueWriteTool, createPolishTextTool,
   createSummarizeTextTool, createGenerateTitleTool,
   createGenerateOutlineTool, createSuggestTagsTool,
-  createGenerateSeoMetaTool, createReviewArticleTool,
-  createTranslateTextTool, createImitateStyleTool,
+  createReviewArticleTool, createTranslateTextTool,
+  createImitateStyleTool,
 } from "./writing.tool";
 
 // ---- memory (5) ----
@@ -94,58 +94,54 @@ import defaultDeepTaskTools, { setDeepTaskLlmConfig } from "./deep-task.tool";
 
 export { setDeepTaskLlmConfig };
 
-// ---- Registry ----
+// ---- Admin tool registry ----
 
-export const allToolFactories: ToolFactory[] = [
-  // post
-  createSearchPostsTool, createGetPostTool, createCreatePostTool,
-  createUpdatePostTool, createDeletePostTool,
+const postTools: ToolFactory[] = [
+  createSearchPostsTool, createGetPostTool,
+  createDeletePostTool,
   createPublishPostTool, createUnpublishPostTool,
   createTopPostTool, createUntopPostTool,
-  // category
+];
+
+const managementTools: ToolFactory[] = [
   createGetCategoriesTool, createCreateCategoryTool,
   createUpdateCategoryTool, createDeleteCategoryTool,
-  // tag
   createGetTagsTool, createCreateTagTool,
   createUpdateTagTool, createDeleteTagTool,
-  // comment
   createGetCommentsTool, createApproveCommentTool,
   createRejectCommentTool, createReplyCommentTool,
   createDeleteCommentTool,
-  // friend-link
   createGetFriendLinksTool, createApproveFriendLinkTool,
   createRejectFriendLinkTool, createDeleteFriendLinkTool,
-  // guest-message
   createGetGuestMessagesTool, createReplyGuestMessageTool,
   createDeleteGuestMessageTool,
-  // announcement
   createGetAnnouncementsTool, createCreateAnnouncementTool,
   createDeleteAnnouncementTool,
-  // changelog
   createGetChangelogsTool, createCreateChangelogTool,
   createDeleteChangelogTool,
-  // site-config
+];
+
+const configTools: ToolFactory[] = [
   createGetSiteConfigTool, createUpdateSiteConfigTool,
   createGetSeoSettingsTool, createUpdateSeoSettingsTool,
   createGetIcpInfoTool, createUpdateIcpInfoTool,
   createGetSettingTool, createUpdateSettingTool,
-  // visitor
+  createGetOssSignUrlTool,
+  createExportDataTool, createImportDataTool,
+];
+
+const analyticsTools: ToolFactory[] = [
   createGetVisitorDashboardTool, createGetVisitorLogsTool,
   createGetOnlineVisitorsTool,
-  // data-transfer
-  createExportDataTool, createImportDataTool,
-  // oss
-  createGetOssSignUrlTool,
-  // writing
-  createContinueWriteTool, createPolishTextTool,
-  createSummarizeTextTool, createGenerateTitleTool,
-  createGenerateOutlineTool, createSuggestTagsTool,
-  createGenerateSeoMetaTool, createReviewArticleTool,
-  createTranslateTextTool, createImitateStyleTool,
-  // memory + note
+];
+
+export const adminToolFactories: ToolFactory[] = [
+  ...postTools,
+  ...managementTools,
+  ...configTools,
+  ...analyticsTools,
   ...defaultMemoryTools,
   ...defaultNoteTools,
-  // deep-task
   ...defaultDeepTaskTools,
 ];
 
@@ -161,6 +157,26 @@ export const dangerousToolNames = new Set([
   "import_data",
 ]);
 
-export function createAllTools(services: ToolServices): StructuredTool[] {
-  return allToolFactories.map((factory) => factory(services));
+export function createAdminTools(services: ToolServices): StructuredTool[] {
+  return adminToolFactories.map((factory) => factory(services));
+}
+
+// ---- Editor tool registry ----
+
+const editorWritingTools: EditorToolFactory[] = [
+  createContinueWriteTool, createPolishTextTool,
+  createSummarizeTextTool, createGenerateTitleTool,
+  createGenerateOutlineTool, createSuggestTagsTool,
+  createReviewArticleTool, createTranslateTextTool,
+  createImitateStyleTool,
+];
+
+export const editorToolFactories: EditorToolFactory[] = [
+  ...editorWritingTools,
+];
+
+export const editorDangerousToolNames: string[] = [];
+
+export function createEditorTools(services: EditorToolServices): StructuredTool[] {
+  return editorToolFactories.map((factory) => factory(services));
 }

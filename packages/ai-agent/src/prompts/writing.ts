@@ -16,9 +16,6 @@ export const GENERATE_OUTLINE_PROMPT = "请为以下主题生成一个结构化�
 export const SUGGEST_TAGS_PROMPT =
   "请根据以下文章内容，推荐 3-5 个标签和 1-2 个分类建议。返回格式：{ tags: string[], category: string }。当前已有分类和标签信息供参考：";
 
-export const GENERATE_SEO_META_PROMPT =
-  "请为以下文章生成 SEO 元数据，包括 description（120-160字）和 keywords（5-8个关键词，逗号分隔）。返回格式：{ description: string, keywords: string }：";
-
 export const REVIEW_ARTICLE_PROMPT =
   "请审阅以下文章，检查错别字、语病、逻辑问题，给出具体的修改建议。如果文章质量很好，也请告知：";
 

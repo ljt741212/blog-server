@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsInt,
@@ -10,6 +11,7 @@ import {
   Min,
   MinLength,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 
 import { PaginationQueryDto } from '@/common';
@@ -74,6 +76,48 @@ export class ChatDto {
 export class ConfirmDto {
   @IsBoolean()
   confirm: boolean;
+}
+
+export class EditorStateDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  content?: string;
+
+  @IsOptional()
+  @IsString()
+  summary?: string;
+
+  @IsOptional()
+  @IsString()
+  categoryName?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tagNames?: string[];
+
+  @IsOptional()
+  @IsString()
+  coverImage?: string;
+}
+
+export class EditorChatDto {
+  @IsString()
+  @MinLength(1)
+  message: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  conversationId?: number;
+
+  @ValidateNested()
+  @Type(() => EditorStateDto)
+  editorState: EditorStateDto;
 }
 
 export class UsageQueryDto extends PaginationQueryDto {
