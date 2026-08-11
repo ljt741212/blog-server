@@ -438,6 +438,53 @@
 
 ---
 
+### 19. ai_conversations（AI 会话表）
+
+**描述**: 存储 AI 对话会话，支持多轮对话和会话恢复
+
+| 字段名              | 类型         | 约束                        | 说明                                  |
+| ------------------- | ------------ | --------------------------- | ------------------------------------- |
+| id                  | INT          | PRIMARY KEY, AUTO_INCREMENT | 会话 ID                               |
+| title               | VARCHAR(200) | NULL                        | AI 自动生成的标题（首条消息触发）     |
+| user_id             | INT          | NOT NULL                    | 所属用户                              |
+| messages            | JSON         | NULL                        | 完整消息历史（ConversationMessage[]） |
+| checkpoint          | TEXT         | NULL                        | LangGraph checkpoint 序列化数据       |
+| checkpoint_metadata | JSON         | NULL                        | Checkpoint metadata                   |
+| checkpoint_config   | JSON         | NULL                        | Checkpoint config                     |
+| created_at          | DATETIME(6)  | NOT NULL                    | 创建时间                              |
+| updated_at          | DATETIME(6)  | NOT NULL                    | 更新时间                              |
+
+**消息格式（ConversationMessage）**:
+
+```json
+{
+  "role": "user | assistant | system | tool",
+  "content": "消息内容",
+  "toolCalls": [{ "name": "search_posts", "args": {}, "id": "call_1" }],
+  "createdAt": "2026-07-31T09:00:00.000Z"
+}
+```
+
+---
+
+### 20. ai_memories（AI 记忆表）
+
+**描述**: Agent 长期记忆，跨会话存储用户偏好、习惯、个人信息
+
+| 字段名       | 类型         | 约束                        | 说明                                 |
+| ------------ | ------------ | --------------------------- | ------------------------------------ |
+| id           | INT          | PRIMARY KEY, AUTO_INCREMENT | 记忆 ID                              |
+| user_id      | INT          | NOT NULL, INDEX             | 所属用户                             |
+| content      | TEXT         | NOT NULL                    | 记忆内容                             |
+| importance   | DECIMAL(3,2) | DEFAULT 0.50                | 重要性 0-1（个人信息 0.9，偏好 0.7） |
+| access_count | INT          | DEFAULT 0                   | 被搜索命中次数                       |
+| created_at   | DATETIME(6)  | NOT NULL                    | 创建时间                             |
+
+**搜索策略**: 关键词匹配 × 重要性权重 × 时间衰减（e^(-0.1×hours/24)）
+**遗忘策略**: 三种模式 — importance_based（低价值阈值）、time_based（按天数过期）、capacity_based（每用户最多 200 条）
+
+---
+
 ## 关系说明
 
 ### ER 图
@@ -451,8 +498,11 @@ Comment (1) ──< (N) Comment [自关联，parentId]
 Visitor (1) ──< (N) VisitorLog
 User (1) ──< (N) Comment [可选]
 User (1) ──< (N) GuestMessage [可选]
+User (1) ──< (N) Conversation [AI 会话]
+User (1) ──< (N) AiMemory [AI 记忆]
 Visitor (1) ──< (N) Comment [可选]
 Visitor (1) ──< (N) GuestMessage [可选]
+AiConfig (1) ──< (N) AiUsage [AI 配置 → 使用日志]
 ```
 
 ### 关系详情
@@ -472,6 +522,10 @@ Visitor (1) ──< (N) GuestMessage [可选]
 7. **User/Visitor ↔ Comment/GuestMessage**: 可选关联。通过 `user_id` 或 `visitor_id` 关联到评论或留言。
 
 8. **AiConfig ↔ AiUsage**: 一对多。一个 AI 配置可对应多次调用日志。删除配置时日志保留（SET NULL）。
+
+9. **User ↔ Conversation**: 一对多。一个用户可有多个 AI 会话。会话按 userId 隔离。
+
+10. **User ↔ AiMemory**: 一对多。一个用户可有多个长期记忆。跨会话共享。
 
 ## 索引设计
 

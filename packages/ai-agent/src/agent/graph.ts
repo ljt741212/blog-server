@@ -15,20 +15,28 @@ export interface BuildAgentOptions {
   tools: StructuredTool[];
   dangerousToolNames: string[];
   checkpointer?: BaseCheckpointSaver;
+  toolChoice?: "auto" | "required" | "none";
 }
 
 export function buildAgent(options: BuildAgentOptions) {
   const model = createChatModel(options.llmConfig);
-  const modelWithTools = model.bindTools!(options.tools) as unknown as BaseChatModel;
+  const modelWithTools = model.bindTools!(options.tools, { tool_choice: options.toolChoice ?? "auto" }) as unknown as BaseChatModel;
 
   const contextManager = new ContextManager(options.llmConfig);
+
+  const isSinglePass = options.toolChoice === "required";
 
   const graph = new StateGraph(AgentState)
     .addNode("agent", makeCallAgent(modelWithTools, model, contextManager))
     .addNode("tools", makeExecuteTool(options.tools, new Set(options.dangerousToolNames), contextManager.tokenCounter))
     .addEdge(START, "agent")
-    .addConditionalEdges("agent", afterAgent, { tools: "tools", end: END })
-    .addEdge("tools", "agent");
+    .addConditionalEdges("agent", afterAgent, { tools: "tools", end: END });
+
+  if (isSinglePass) {
+    graph.addEdge("tools", END);    // 单次直通：工具执行完即结束
+  } else {
+    graph.addEdge("tools", "agent"); // 标准循环：工具结果返回 agent 继续对话
+  }
 
   return graph.compile({ checkpointer: options.checkpointer });
 }

@@ -106,18 +106,19 @@ export class EditorStateDto {
 }
 
 export class EditorChatDto {
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  message: string;
+  message?: string;
 
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   conversationId?: number;
 
+  @IsOptional()
   @ValidateNested()
   @Type(() => EditorStateDto)
-  editorState: EditorStateDto;
+  editorState?: EditorStateDto;
 }
 
 export class UsageQueryDto extends PaginationQueryDto {

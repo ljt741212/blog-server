@@ -615,8 +615,8 @@ export class AiService {
   // ==================== Editor Agent ====================
 
   async handleEditorChat(
-    message: string,
-    editorState: EditorStateDto,
+    message: string | undefined,
+    editorState: EditorStateDto | undefined,
     conversationId: number | null,
     userId: number,
     sseEmitter: SseEmitter,
@@ -624,7 +624,10 @@ export class AiService {
     this.requestUserId = userId;
     const startTime = Date.now();
 
-    if (message.length > 8000) {
+    const effectiveMessage =
+      message?.trim() || '请根据编辑器中的内容，帮我优化和推荐。';
+
+    if (effectiveMessage.length > 8000) {
       sseEmitter.emitError('消息过长，请控制在 8000 字以内');
       return;
     }
@@ -640,15 +643,15 @@ export class AiService {
     const activeConfigId = activeConfig?.id;
 
     const editorContext = this.formatEditorContext(editorState);
+    const userMessage = `${editorContext}\n\n---\n用户消息：${effectiveMessage}\n\n（你必须调用工具来响应。写作操作调用对应工具，闲聊用 reply_to_user。）`;
     const isNew = !conversation.checkpoint;
 
     const messages: BaseMessage[] = isNew
       ? [
           new SystemMessage(ARTICLE_EDITOR_PROMPT),
-          new SystemMessage(editorContext),
-          new HumanMessage(message),
+          new HumanMessage(userMessage),
         ]
-      : [new SystemMessage(editorContext), new HumanMessage(message)];
+      : [new HumanMessage(userMessage)];
 
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
@@ -689,6 +692,7 @@ export class AiService {
         {
           configurable: { thread_id: String(conversation.id), sseEmitter },
           callbacks,
+          recursionLimit: 10,
         },
       );
 
@@ -709,12 +713,16 @@ export class AiService {
 
       if (!conversation.title) {
         setImmediate(() => {
-          void this.generateTitle(conversation.id, message);
+          void this.generateTitle(conversation.id, effectiveMessage);
         });
       }
 
       sseEmitter.emitDone();
     } catch (err: unknown) {
+      if ((err as { code?: string }).code === 'RECURSION_LIMIT') {
+        sseEmitter.emitDone();
+        return;
+      }
       this.logger.error(`Editor agent stream error: ${errMsg(err)}`);
       sseEmitter.emitError(errMsg(err) || 'AI 处理出错，请重试');
     } finally {
@@ -754,6 +762,7 @@ export class AiService {
       const stream = await agent.stream(new Command({ resume: { confirm } }), {
         configurable: { thread_id: String(conversationId), sseEmitter },
         callbacks,
+        recursionLimit: 10,
       });
 
       const streamMessages: BaseMessage[] = [];
@@ -819,14 +828,14 @@ export class AiService {
     };
   }
 
-  private formatEditorContext(state: EditorStateDto): string {
+  private formatEditorContext(state?: EditorStateDto): string {
     return `[当前编辑器状态]
-标题: ${state.title || '(空)'}
-内容: ${state.content || '(空)'}
-摘要: ${state.summary || '(空)'}
-分类: ${state.categoryName || '(空)'}
-标签: ${state.tagNames?.join(', ') || '(空)'}
-封面图: ${state.coverImage || '(空)'}`;
+标题: ${state?.title || '(空)'}
+内容: ${state?.content || '(空)'}
+摘要: ${state?.summary || '(空)'}
+分类: ${state?.categoryName || '(空)'}
+标签: ${state?.tagNames?.join(', ') || '(空)'}
+封面图: ${state?.coverImage || '(空)'}`;
   }
 
   // ==================== Conversation ====================

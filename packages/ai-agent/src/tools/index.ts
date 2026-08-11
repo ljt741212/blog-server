@@ -83,6 +83,9 @@ import {
   createImitateStyleTool,
 } from "./writing.tool";
 
+// ---- reply (1) ----
+import { createReplyTool } from "./reply.tool";
+
 // ---- memory (5) ----
 import defaultMemoryTools from "./memory.tool";
 
@@ -168,7 +171,7 @@ const editorWritingTools: EditorToolFactory[] = [
   createSummarizeTextTool, createGenerateTitleTool,
   createGenerateOutlineTool, createSuggestTagsTool,
   createReviewArticleTool, createTranslateTextTool,
-  createImitateStyleTool,
+  createImitateStyleTool, createReplyTool,
 ];
 
 export const editorToolFactories: EditorToolFactory[] = [

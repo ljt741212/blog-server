@@ -290,20 +290,41 @@
 
 **职责**:
 
-- AI 聊天对话（流式 SSE 响应）
-- AI 配置管理（CRUD + 切换启用状态）
-- AI 使用量统计日志
+- AI 聊天对话（SSE 流式响应 + LangGraph Agent）
+- AI 配置管理（多 provider 支持：OpenAI / DeepSeek / Anthropic）
+- AI 使用量统计（token 用量、延迟、模型）
+- 会话管理（多轮对话、历史恢复、自动标题）
+- 长期记忆（跨会话存储用户偏好、习惯）
+- 危险操作确认（删除等操作通过 LangGraph interrupt 暂停等待确认）
+
+**Agent 架构**:
+
+Agent 核心逻辑位于 `packages/ai-agent/`，通过 `@blog/ai-agent` workspace 包引入。
+基于 LangGraph 构建，包含 64 个工具（文章、分类、标签、评论、友链、留言、公告、
+更新日志、站点配置、SEO、ICP、访问统计、数据管理、OSS、写作辅助、记忆、笔记、深度任务）。
 
 **核心接口**:
 
-- `POST /api/ai/chat` — AI 对话（流式）
-- `GET /api/ai/configs` — 获取 AI 配置列表
+- `POST /api/ai/chat` — AI 对话（SSE 流式），支持 temporary 临时会话
+- `POST /api/ai/chat/:conversationId/confirm` — 确认/拒绝危险操作
+- `GET /api/ai/conversations` — 分页获取当前用户会话列表
+- `GET /api/ai/conversations/:id` — 获取会话详情（含完整消息历史）
+- `DELETE /api/ai/conversations/:id` — 删除会话
+- `GET /api/ai/configs` — 获取 AI 配置列表（API Key 脱敏）
 - `POST /api/ai/configs/save` — 创建/更新配置
 - `DELETE /api/ai/configs/:id` — 删除配置
 - `PATCH /api/ai/configs/:id/activate` — 切换启用状态
-- `GET /api/ai/usage` — 查询使用统计
+- `GET /api/ai/usage` — 查询使用统计（按模型/日期筛选）
 
-**权限**: 需登录认证
+**关联实体**: `ai_configs`、`ai_usage_logs`、`ai_conversations`、`ai_memories`
+
+**权限**: 需登录认证；配置管理需超级管理员
+
+**记忆系统**: 三层架构
+
+- 短期：当前对话窗口（LangGraph state，Redis checkpoint）
+- 中期：压缩摘要 + 决策记录（ContextManager 自动压缩）
+- 长期：持久化记忆（`ai_memories` 表，模型主动调用 memory_add/search/forget）
 
 #### 17. 站点配置模块 (Site Config Module)
 

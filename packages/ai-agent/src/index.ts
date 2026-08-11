@@ -36,6 +36,7 @@ export function createAgent(config: AgentConfig) {
     tools,
     dangerousToolNames: config.dangerousToolNames,
     checkpointer: config.checkpointer,
+    toolChoice: "auto",
   });
 }
 
@@ -51,5 +52,6 @@ export function createEditorAgent(config: {
     tools,
     dangerousToolNames: [],
     checkpointer: config.checkpointer,
+    toolChoice: "required",
   });
 }
