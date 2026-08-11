@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "pnpm --filter server start:dev",
-    "build": "pnpm --filter server build",
+    "build": "pnpm --filter @blog/ai-agent build && pnpm --filter server build",
     "start:prod": "pnpm --filter server start:prod",
     "lint": "pnpm --filter server lint",
     "test": "pnpm --filter server test",

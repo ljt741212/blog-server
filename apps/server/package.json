@@ -39,6 +39,7 @@
     "@nestjs/swagger": "^11.0.7",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^10.0.0",
+    "@blog/ai-agent": "workspace:*",
     "ali-oss": "^6.23.0",
     "archiver": "^8.0.0",
     "bcryptjs": "^2.4.3",
