@@ -1,0 +1,53 @@
+apps/server/docs/ARCHITECTURE.md
+  ba169e5f0ec5b56c 293-304,308-313,317-323,325-327
+packages/ai-agent/src/agent/graph.ts
+  08c946dde3cee9ff 18,23,27-28,33-39
+packages/ai-agent/src/tools/reply.tool.ts
+  08c946dde3cee9ff 1-17
+apps/server/src/modules/ai/ai.service.ts
+  08c946dde3cee9ff 618-619,627-630,646,652,654,695,716,723-725,765,831,833-838
+apps/server/docs/DATABASE.md
+  ba169e5f0ec5b56c 441-445,447-457,468-474,476-487,501-502,505,526-528
+packages/ai-agent/src/tools/index.ts
+  08c946dde3cee9ff 86-88,174
+packages/ai-agent/src/prompts/system.ts
+  08c946dde3cee9ff 83-85,88-95
+apps/server/src/modules/ai/ai.dto.ts
+  08c946dde3cee9ff 109,111,118,121
+packages/ai-agent/src/index.ts
+  08c946dde3cee9ff 39,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "e1407cdb1e67f940da92dfce286a7de7799753eb",
+  "prompts": {
+    "08c946dde3cee9ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d166255-5af2-4716-99dd-5e4b6abb35e8",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 131,
+      "total_deletions": 88,
+      "accepted_lines": 81,
+      "overriden_lines": 1,
+      "messages_url": "https://git-ai.hsjdata.com/cas/860f30eef986904b50d5cf44b5f6423959f4aa6b29f248e054d8b062799a0e1b"
+    },
+    "ba169e5f0ec5b56c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e65a16f-2073-432d-ad38-fc8881a04211",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 741,
+      "overriden_lines": 64
+    }
+  }
+}
