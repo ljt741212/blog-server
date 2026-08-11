@@ -26,7 +26,7 @@ jobs:
 
       - name: Build and push blog-server
         run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} .
+          docker build -f apps/server/Dockerfile -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} .
           docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}
           docker tag ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
           docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
