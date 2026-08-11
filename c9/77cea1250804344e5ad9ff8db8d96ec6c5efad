@@ -1,0 +1,24 @@
+apps/server/Dockerfile
+  bfc559c6e559ab6e 25-27,30-32,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "c977cea1250804344e5ad9ff8db8d96ec6c5efad",
+  "prompts": {
+    "bfc559c6e559ab6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f779fd0-846c-4288-a2db-18b346847bb0",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 7,
+      "total_deletions": 2,
+      "accepted_lines": 7,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/78354b6182e2ec9591360f9224e0fe37ab34d9dc950f1049b7a541a7953ee529"
+    }
+  }
+}
