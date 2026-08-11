@@ -1,0 +1,26 @@
+apps/server/package.json
+  bfc559c6e559ab6e 42
+package.json
+  bfc559c6e559ab6e 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "a354a1932b6076407fe0e081bf17dfdb0675d99b",
+  "prompts": {
+    "bfc559c6e559ab6e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f779fd0-846c-4288-a2db-18b346847bb0",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 141,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/3758e4f5871a9050fe6e401540671ce50c7215f7fdd8b1e598dd467a4421fa86"
+    }
+  }
+}
