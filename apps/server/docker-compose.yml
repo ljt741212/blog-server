@@ -27,6 +27,20 @@ services:
     networks:
       - blog_network
 
+  redis:
+    image: crpi-if0dbq06utqk8du0.cn-hongkong.personal.cr.aliyuncs.com/blog-server/redis:7-alpine
+    container_name: blog-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - blog_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   app:
     image: crpi-if0dbq06utqk8du0.cn-hongkong.personal.cr.aliyuncs.com/blog-server/server:latest
     container_name: blog-server
@@ -58,14 +72,19 @@ services:
       SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - blog_network
 
 volumes:
   mysql_data:
+  redis_data:
 
 networks:
   blog_network:
