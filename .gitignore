@@ -1,6 +1,12 @@
 # compiled output
 /dist
 /node_modules
+/apps/server/node_modules
+/apps/server/dist
+/apps/server/build
+/packages/ai-agent/node_modules
+/packages/ai-agent/dist
+
 /build
 *.tsbuildinfo
 
@@ -38,10 +44,9 @@ lerna-debug.log*
 
 # dotenv environment variable files
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*.local
+.env.development
+.env.production
 
 # temp directory
 .temp
@@ -55,3 +60,11 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# deployment artifacts
+.code_deploy
+
+# stale compiled output in source (ai-agent legacy)
+/packages/ai-agent/src/**/*.js
+/packages/ai-agent/src/**/*.js.map
+/packages/ai-agent/src/**/*.d.ts
