@@ -22,11 +22,16 @@ WORKDIR /app
 
 COPY .npmrc ./
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder /app/packages/ai-agent/package.json ./packages/ai-agent/package.json
+
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/database ./database
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/database ./apps/server/database
+COPY --from=builder /app/packages/ai-agent/dist ./packages/ai-agent/dist
 
 EXPOSE 3004
 
+WORKDIR /app/apps/server
 CMD ["node", "dist/main.js"]
