@@ -43,6 +43,15 @@ jobs:
           docker tag redis:7-alpine ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/redis:7-alpine
           docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/redis:7-alpine
 
+      - name: Copy compose file to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: apps/server/docker-compose.yml
+          target: /opt/blog-server/
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
@@ -55,100 +64,7 @@ jobs:
 
             cd /opt/blog-server
 
-            cat > docker-compose.yml << 'COMPOSE_EOF'
-            services:
-              mysql:
-                image: crpi-if0dbq06utqk8du0.cn-hongkong.personal.cr.aliyuncs.com/blog-server/mysql:8.0
-                container_name: blog-mysql
-                restart: always
-                environment:
-                  MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-                  MYSQL_DATABASE: ${DB_DATABASE:-blog_db}
-                volumes:
-                  - mysql_data:/var/lib/mysql
-                healthcheck:
-                  test:
-                    [
-                      "CMD",
-                      "mysqladmin",
-                      "ping",
-                      "-h",
-                      "localhost",
-                      "-u",
-                      "root",
-                      "-p${DB_PASSWORD}",
-                    ]
-                  interval: 10s
-                  timeout: 5s
-                  retries: 10
-                  start_period: 30s
-                networks:
-                  - blog_network
-
-              redis:
-                image: crpi-if0dbq06utqk8du0.cn-hongkong.personal.cr.aliyuncs.com/blog-server/redis:7-alpine
-                container_name: blog-redis
-                restart: always
-                volumes:
-                  - redis_data:/data
-                networks:
-                  - blog_network
-                healthcheck:
-                  test: ["CMD", "redis-cli", "ping"]
-                  interval: 10s
-                  timeout: 5s
-                  retries: 5
-
-              app:
-                image: SERVER_IMAGE
-                container_name: blog-server
-                restart: always
-                ports:
-                  - "3004:3004"
-                environment:
-                  DB_HOST: mysql
-                  DB_PORT: ${DB_PORT:-3306}
-                  DB_USERNAME: ${DB_USERNAME:-root}
-                  DB_PASSWORD: ${DB_PASSWORD}
-                  DB_DATABASE: ${DB_DATABASE:-blog_db}
-                  DB_SYNCHRONIZE: ${DB_SYNCHRONIZE:-false}
-                  DB_LOGGING: ${DB_LOGGING:-error}
-                  JWT_SECRET: ${JWT_SECRET}
-                  PORT: ${PORT:-3004}
-                  NODE_ENV: ${NODE_ENV:-production}
-                  CORS_ORIGIN: ${CORS_ORIGIN}
-                  EMAIL_HOST: ${EMAIL_HOST}
-                  EMAIL_PORT: ${EMAIL_PORT:-465}
-                  EMAIL_SECURE: ${EMAIL_SECURE:-true}
-                  EMAIL_USER: ${EMAIL_USER}
-                  EMAIL_PASS: ${EMAIL_PASS}
-                  EMAIL_FROM: ${EMAIL_FROM}
-                  OSS_REGION: ${OSS_REGION}
-                  OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
-                  OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET}
-                  OSS_BUCKET: ${OSS_BUCKET}
-                  SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME}
-                  SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
-                  SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
-                  REDIS_HOST: redis
-                  REDIS_PORT: 6379
-                depends_on:
-                  mysql:
-                    condition: service_healthy
-                  redis:
-                    condition: service_healthy
-                networks:
-                  - blog_network
-
-            volumes:
-              mysql_data:
-              redis_data:
-
-            networks:
-              blog_network:
-            COMPOSE_EOF
-
-            sed -i "s|SERVER_IMAGE|${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}|" docker-compose.yml
+            sed -i "s|image: .*/server:.*|image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}|" docker-compose.yml
 
             docker compose pull
             docker compose up -d --remove-orphans
