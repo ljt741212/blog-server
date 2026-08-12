@@ -31,6 +31,18 @@ jobs:
           docker tag ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
           docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
 
+      - name: Sync mysql:8.0 to ACR
+        run: |
+          docker pull mysql:8.0
+          docker tag mysql:8.0 ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/mysql:8.0
+          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/mysql:8.0
+
+      - name: Sync redis:7-alpine to ACR
+        run: |
+          docker pull redis:7-alpine
+          docker tag redis:7-alpine ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/redis:7-alpine
+          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/redis:7-alpine
+
       - name: Copy compose file to server
         uses: appleboy/scp-action@v0.1.7
         with:
