@@ -32,10 +32,20 @@ export class Conversation {
   })
   checkpoint: string;
 
-  @Column({ type: 'json', nullable: true, comment: 'Checkpoint metadata' })
+  @Column({
+    name: 'checkpoint_metadata',
+    type: 'json',
+    nullable: true,
+    comment: 'Checkpoint metadata',
+  })
   checkpointMetadata: string;
 
-  @Column({ type: 'json', nullable: true, comment: 'Checkpoint config' })
+  @Column({
+    name: 'checkpoint_config',
+    type: 'json',
+    nullable: true,
+    comment: 'Checkpoint config',
+  })
   checkpointConfig: string;
 
   @CreateDateColumn({ name: 'created_at' })
