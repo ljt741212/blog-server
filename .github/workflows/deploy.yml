@@ -55,7 +55,7 @@ jobs:
 
             sed -i "s|image: .*/server:.*|image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}|" docker-compose.yml
 
-            docker compose pull
+            docker compose pull app
             docker compose up -d --remove-orphans
             docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
             docker compose exec -T app node dist/scripts/seed-admin.js || echo "seed skipped"
