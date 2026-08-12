@@ -30,8 +30,10 @@ RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY --from=builder /app/apps/server/dist ./apps/server/dist
 COPY --from=builder /app/apps/server/database ./apps/server/database
 COPY --from=builder /app/packages/ai-agent/dist ./packages/ai-agent/dist
+COPY --from=builder /app/apps/server/scripts/docker-entrypoint.sh ./apps/server/scripts/docker-entrypoint.sh
 
 EXPOSE 3004
 
 WORKDIR /app/apps/server
-CMD ["node", "dist/main.js"]
+RUN chmod +x scripts/docker-entrypoint.sh
+ENTRYPOINT ["scripts/docker-entrypoint.sh"]
