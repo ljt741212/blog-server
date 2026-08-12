@@ -58,6 +58,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: '15m'
           script: |
             set -e
             echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
@@ -66,9 +67,8 @@ jobs:
 
             sed -i "s|image: .*/server:.*|image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}|" docker-compose.yml
 
-            docker compose pull
+            docker compose pull app
             docker compose up -d --remove-orphans
-            sleep 15
             docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
             docker compose exec -T app node dist/scripts/seed-admin.js || echo "seed skipped"
             docker image prune -f
