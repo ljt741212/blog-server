@@ -1,0 +1,26 @@
+apps/server/src/modules/ai/ai.service.ts
+  b7da89e679d152e7 197,647
+packages/ai-agent/src/agent/message-helper.ts
+  b7da89e679d152e7 5-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "2472afe8fefaf5fcc88ea88265283131853f1e26",
+  "prompts": {
+    "b7da89e679d152e7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ce8d6f1-7e5f-476c-b374-13438aefe064",
+        "model": "deepseek-v4-pro"
+      },
+      "human_author": "lijintao",
+      "messages": [],
+      "total_additions": 13,
+      "total_deletions": 3,
+      "accepted_lines": 13,
+      "overriden_lines": 0,
+      "messages_url": "https://git-ai.hsjdata.com/cas/ab02ff93ba96bff35e2ff4a738d9d265256271e4bfb4154698104b453ef163e1"
+    }
+  }
+}
