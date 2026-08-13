@@ -30,6 +30,7 @@ export function createChatModel(config: LlmConfig): BaseChatModel {
         anthropicApiUrl: baseUrl || undefined,
         maxTokens,
         temperature,
+        streaming: true,
         clientOptions: { defaultHeaders: { "anthropic-beta": "tools-2024-04-04" } },
       });
 
