@@ -51,6 +51,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: apps/server/docker-compose.yml
           target: /opt/blog-server/
+          strip_components: 2
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
