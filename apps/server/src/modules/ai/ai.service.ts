@@ -194,7 +194,7 @@ export class AiService {
     });
     const activeConfigId = activeConfig?.id;
 
-    const isNew = !conversation.checkpoint;
+    const isNew = !conversation.messages?.length;
     const messages: BaseMessage[] = isNew
       ? [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(message)]
       : [new HumanMessage(message)];
@@ -644,7 +644,7 @@ export class AiService {
 
     const editorContext = this.formatEditorContext(editorState);
     const userMessage = `${editorContext}\n\n---\n用户消息：${effectiveMessage}\n\n（你必须调用工具来响应。写作操作调用对应工具，闲聊用 reply_to_user。）`;
-    const isNew = !conversation.checkpoint;
+    const isNew = !conversation.messages?.length;
 
     const messages: BaseMessage[] = isNew
       ? [
