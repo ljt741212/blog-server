@@ -394,7 +394,6 @@ jobs:
 
             cd /opt/blog-server
 
-            # 注意：必须用 .*/server:.* 精确匹配 app 镜像，不能误伤 mysql / redis
             sed -i "s|image: .*/server:.*|image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}|" docker-compose.yml
 
             docker compose pull app
