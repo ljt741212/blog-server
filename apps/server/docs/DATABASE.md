@@ -588,7 +588,7 @@ AiConfig (1) ──< (N) AiUsage [AI 配置 → 使用日志]
 
 ## 迁移脚本
 
-数据库迁移文件位于 `src/migrations/` 目录，使用 TypeORM 管理。
+数据库迁移文件位于 `apps/server/src/migrations/` 目录，使用 TypeORM 管理。
 
 ### 运行迁移
 
@@ -599,13 +599,13 @@ npm run migration:run
 ### 创建迁移
 
 ```bash
-npm run migration:create ./src/migrations/your-migration-name
+npm run migration:create ./apps/server/src/migrations/your-migration-name
 ```
 
 ### 生成迁移
 
 ```bash
-npm run migration:generate ./src/migrations/update-table
+npm run migration:generate ./apps/server/src/migrations/update-table
 ```
 
 ### 同步 Schema（开发环境）

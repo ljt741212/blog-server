@@ -8,24 +8,28 @@ GitHub (push to main)
     ▼
 GitHub Actions (ubuntu-latest)
     │
-    ├─ docker build → push to ACR (阿里云容器镜像仓库 香港)
-    ├─ docker pull mysql:8.0 → push to ACR
+    ├─ docker build -f apps/server/Dockerfile → push to ACR（阿里云容器镜像仓库）
+    ├─ docker pull mysql:8.0              → push to ACR
+    ├─ docker pull redis:7-alpine         → push to ACR
+    ├─ scp apps/server/docker-compose.yml → /opt/blog-server/
     │
-    └─ SSH to 阿里云 Lighthouse 上海
+    └─ SSH to 阿里云 Lighthouse
          ├─ docker login ACR
-         ├─ docker compose pull
-         ├─ docker compose up -d
-         ├─ migration:run
-         └─ seed-admin
+         ├─ sed 替换 compose 中 app 镜像 tag 为本次 sha
+         ├─ docker compose pull → docker compose up -d
+         ├─ docker restart blog-nginx（Nginx 反向代理同步刷新上游 IP）
+         ├─ migration:run → seed-admin
+         └─ docker image prune -f
 ```
 
-| 组件         | 说明                               |
-| ------------ | ---------------------------------- |
-| **代码仓库** | GitHub                             |
-| **CI/CD**    | GitHub Actions (`ubuntu-latest`)   |
-| **镜像仓库** | 阿里云 ACR（香港）                 |
-| **服务器**   | 阿里云轻量应用服务器（Lighthouse） |
-| **容器编排** | Docker Compose                     |
+| 组件         | 说明                                               |
+| ------------ | -------------------------------------------------- |
+| **代码仓库** | GitHub                                             |
+| **CI/CD**    | GitHub Actions (`ubuntu-latest`)                   |
+| **镜像仓库** | 阿里云 ACR（个人版）                               |
+| **服务器**   | 阿里云轻量应用服务器（Lighthouse）                 |
+| **容器编排** | Docker Compose：MySQL + Redis + App                |
+| **反向代理** | Nginx（独立容器 `blog-nginx`，SSL 终止、路径转发） |
 
 ---
 
@@ -113,6 +117,8 @@ dnf install -y git
 
 ## docker-compose.yml
 
+> 部署时使用：复制本文件到服务器 `/opt/blog-server/docker-compose.yml`，镜像中的 `<your-acr-registry>` 替换为实际 ACR 地址。
+
 ```yaml
 services:
   mysql:
@@ -142,6 +148,20 @@ services:
       start_period: 30s
     networks:
       - blog_network
+
+  redis:
+    image: <your-acr-registry>/blog-server/redis:7-alpine
+    container_name: blog-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - blog_network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     image: <your-acr-registry>/blog-server/server:latest
@@ -175,20 +195,25 @@ services:
       SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - blog_network
 
 volumes:
   mysql_data:
+  redis_data:
 
 networks:
   blog_network:
 ```
 
-> **注意**：`<your-acr-registry>` 替换为实际 ACR 地址，格式为 `crpi-<id>.cn-hongkong.personal.cr.aliyuncs.com`。
+> **注意**：`<your-acr-registry>` 替换为实际 ACR 地址，格式为 `crpi-<id>.<region>.personal.cr.aliyuncs.com`（登录 ACR 控制台「访问凭证」页查看）。
 
 ---
 
@@ -252,6 +277,15 @@ networks:
 | 变量             | 说明                | 备注                                  |
 | ---------------- | ------------------- | ------------------------------------- |
 | `ENCRYPTION_KEY` | AI API 密钥加密密钥 | **必填**，`openssl rand -hex 32` 生成 |
+
+### 缓存（Redis）
+
+| 变量         | 说明       | 备注                                            |
+| ------------ | ---------- | ----------------------------------------------- |
+| `REDIS_HOST` | Redis 主机 | Docker 内使用服务名 `redis`，**不是 localhost** |
+| `REDIS_PORT` | Redis 端口 | 默认 `6379`                                     |
+
+> Redis 用于 AI Agent 的 LangGraph checkpoint（会话续聊、记忆持久化）。
 
 ---
 
@@ -318,9 +352,9 @@ jobs:
       - name: Login to ACR
         run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-      - name: Build and push blog-server
+      - name: Build and push blog-server（monorepo 顶层构建，Dockerfile 在 apps/server/）
         run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} .
+          docker build -f apps/server/Dockerfile -t ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} .
           docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}
           docker tag ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
           docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:latest
@@ -331,24 +365,41 @@ jobs:
           docker tag mysql:8.0 ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/mysql:8.0
           docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/mysql:8.0
 
+      - name: Sync redis:7-alpine to ACR
+        run: |
+          docker pull redis:7-alpine
+          docker tag redis:7-alpine ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/redis:7-alpine
+          docker push ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/redis:7-alpine
+
+      - name: Copy compose file to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: apps/server/docker-compose.yml
+          target: /opt/blog-server/
+          strip_components: 2
+
       - name: Deploy to server
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          command_timeout: '15m'
           script: |
             set -e
             echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
             cd /opt/blog-server
 
-            # 注意：必须用 .*/server:.* 精确匹配 app 镜像，不能误伤 mysql
+            # 注意：必须用 .*/server:.* 精确匹配 app 镜像，不能误伤 mysql / redis
             sed -i "s|image: .*/server:.*|image: ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/server:${{ github.sha }}|" docker-compose.yml
 
-            docker compose pull
+            docker compose pull app
             docker compose up -d --remove-orphans
-            sleep 15
+            docker restart blog-nginx
             docker compose exec -T app node node_modules/typeorm/cli.js migration:run -d dist/config/data-source.js
             docker compose exec -T app node dist/scripts/seed-admin.js || echo "seed skipped"
             docker image prune -f
@@ -356,13 +407,18 @@ jobs:
             docker compose logs --tail 30
 ```
 
-> **关键**：sed 替换镜像时，模式 `.*/server:.*` 只匹配 app 的 `/server:` 标签行，不会误伤 MySQL 的 `/mysql:` 标签。**不要用 `.*blog-server.*`**，会同时替换两个镜像导致 MySQL 容器运行错误的镜像。
+> **关键点**：
+>
+> - `docker build -f apps/server/Dockerfile`：monorepo 顶层构建，Dockerfile 使用 `apps/server/dist` 等绝对路径拷贝产物
+> - `scp` 步骤将最新 `docker-compose.yml` 推到服务器（`strip_components: 2` 脱掉 `apps/server/` 前缀）
+> - `sed` 替换镜像时，模式 `.*/server:.*` 只匹配 app 的 `/server:` 标签行，不会误伤 MySQL 的 `/mysql:` 或 Redis 的 `/redis:`
+> - `docker restart blog-nginx`：Nginx 反向代理容器与 app 容器同 network，app 重建换 IP 后必须重启 Nginx 才能恢复上游解析，否则 502
 
 ---
 
 ## Dockerfile
 
-项目使用多阶段构建，适配了国内 npm 镜像：
+项目使用多阶段构建，monorepo 顶层构建但只打包 `apps/server` 与 `packages/ai-agent` 的产物。
 
 ```dockerfile
 # Stage 1: Build
@@ -389,15 +445,24 @@ WORKDIR /app
 
 COPY .npmrc ./
 COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
+COPY --from=builder /app/apps/server/package.json ./apps/server/package.json
+COPY --from=builder /app/packages/ai-agent/package.json ./packages/ai-agent/package.json
+
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/database ./database
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/database ./apps/server/database
+COPY --from=builder /app/packages/ai-agent/dist ./packages/ai-agent/dist
+COPY --from=builder /app/apps/server/scripts/docker-entrypoint.sh ./apps/server/scripts/docker-entrypoint.sh
 
 EXPOSE 3004
 
-CMD ["node", "dist/main.js"]
+WORKDIR /app/apps/server
+RUN chmod +x scripts/docker-entrypoint.sh
+ENTRYPOINT ["scripts/docker-entrypoint.sh"]
 ```
+
+> `docker-entrypoint.sh` 在启动应用前自动执行 `migration:run`，避免新镜像部署后表结构未更新导致 500。
 
 `.npmrc` 文件内容：
 
@@ -429,12 +494,15 @@ mkdir -p /opt/blog-server
 
 将代码推送到 GitHub `main` 分支，GitHub Actions 自动执行：
 
-1. 构建 Docker 镜像并推送到 ACR
-2. 同步 `mysql:8.0` 镜像到 ACR
-3. SSH 登录服务器
-4. 拉取镜像并启动容器
-5. 运行数据库迁移
-6. 执行管理员账号种子
+1. 构建 Docker 镜像（`apps/server/Dockerfile`，包含 `apps/server` + `packages/ai-agent` 产物）并推送到 ACR
+2. 同步 `mysql:8.0` 与 `redis:7-alpine` 镜像到 ACR
+3. `scp` 最新的 `apps/server/docker-compose.yml` 到 `/opt/blog-server/`
+4. SSH 登录服务器
+5. `sed` 替换 compose 中 app 镜像 tag 为本次 commit sha
+6. `docker compose pull` → `docker compose up -d`
+7. `docker restart blog-nginx`（Nginx 反向代理刷新上游 IP，避免 502）
+8. 运行数据库迁移 + 执行管理员账号种子
+9. `docker image prune -f` 清理悬空镜像
 
 ### 5. 验证
 
@@ -491,9 +559,9 @@ docker compose up -d
 
 ### sed 替换镜像错误
 
-**症状**：MySQL 容器输出 NestJS 日志（两个容器跑了同一镜像）。
+**症状**：MySQL / Redis 容器输出 NestJS 日志（几个容器跑了同一 app 镜像）。
 
-**原因**：sed 模式 `.*blog-server.*` 同时匹配了 `/mysql:` 和 `/server:`。
+**原因**：sed 模式写得太宽（如 `.*blog-server.*`）会同时匹配 `/mysql:` / `/redis:` / `/server:`。
 
 **修复**：使用 `.*/server:.*` 精确匹配 app 镜像行。已修复到 deploy.yml 中。
 

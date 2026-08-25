@@ -138,7 +138,7 @@
 - 密码修改
 - 当前用户信息查询
 
-**路径**: `src/modules/user/`
+**路径**: `apps/server/src/modules/user/`
 
 #### 2. 文章模块 (Post Module)
 
@@ -150,7 +150,7 @@
 - 浏览量/点赞数统计
 - 文章与分类、标签的关联
 
-**路径**: `src/modules/post/`
+**路径**: `apps/server/src/modules/post/`
 
 #### 3. 分类模块 (Category Module)
 
@@ -160,7 +160,7 @@
 - 分类状态管理（0-禁用 / 1-启用）
 - 乐观锁版本控制
 
-**路径**: `src/modules/category/`
+**路径**: `apps/server/src/modules/category/`
 
 #### 4. 标签模块 (Tag Module)
 
@@ -171,7 +171,7 @@
 - 标签与文章的多对多关系
 - 乐观锁版本控制
 
-**路径**: `src/modules/tag/`
+**路径**: `apps/server/src/modules/tag/`
 
 #### 5. 评论模块 (Comment Module)
 
@@ -182,7 +182,7 @@
 - 评论回复（父子关系，parentId 自关联）
 - 评论状态管理
 
-**路径**: `src/modules/comment/`
+**路径**: `apps/server/src/modules/comment/`
 
 #### 6. 访客模块 (Visitor Module)
 
@@ -194,7 +194,7 @@
 - SSE 实时在线访客流推送
 - 访客仪表板统计
 
-**路径**: `src/modules/visitor/`
+**路径**: `apps/server/src/modules/visitor/`
 
 #### 7. 文件上传模块 (OSS Module)
 
@@ -204,7 +204,7 @@
 - 文件签名 URL 生成
 - 文件下载（流式传输）
 
-**路径**: `src/modules/oss/`
+**路径**: `apps/server/src/modules/oss/`
 
 #### 8. 友链模块 (Friend Link Module)
 
@@ -212,7 +212,7 @@
 
 - 友链的 CRUD 操作
 
-**路径**: `src/modules/friend-link/`
+**路径**: `apps/server/src/modules/friend-link/`
 
 #### 9. 留言模块 (Guest Message Module)
 
@@ -222,7 +222,7 @@
 - 留言审核机制（pending / approved / rejected）
 - 留言列表查询
 
-**路径**: `src/modules/guest-message/`
+**路径**: `apps/server/src/modules/guest-message/`
 
 #### 10. 公告模块 (Announcement Module)
 
@@ -232,7 +232,7 @@
 - 公告状态管理（draft / published / archived）
 - 公告置顶功能
 
-**路径**: `src/modules/announcement/`
+**路径**: `apps/server/src/modules/announcement/`
 
 #### 11. 更新日志模块 (Changelog Module)
 
@@ -242,7 +242,7 @@
 - 发布状态管理（isPublished）
 - 按类型（feature / improvement / bugfix / security）分类
 
-**路径**: `src/modules/changelog/`
+**路径**: `apps/server/src/modules/changelog/`
 
 #### 12. 设置模块 (Setting Module)
 
@@ -251,7 +251,7 @@
 - 聚合设置管理（SEO、友链、ICP 信息的组合读写）
 - 友链批量替换（事务性操作）
 
-**路径**: `src/modules/setting/`
+**路径**: `apps/server/src/modules/setting/`
 
 #### 13. SEO 设置模块 (SEO Setting Module)
 
@@ -260,7 +260,7 @@
 - SEO 元数据存储（title、description、keywords、OG 标签、Schema 标记等）
 - 单行配置模式（只保留最新一条记录）
 
-**路径**: `src/modules/seo-setting/`
+**路径**: `apps/server/src/modules/seo-setting/`
 
 #### 14. ICP 备案信息模块 (ICP Info Module)
 
@@ -269,7 +269,7 @@
 - ICP 备案号、查询 URL、网站名称存储
 - 单行配置模式（只保留最新一条记录）
 
-**路径**: `src/modules/icp-info/`
+**路径**: `apps/server/src/modules/icp-info/`
 
 #### 15. 数据导入导出模块 (Data Transfer Module)
 
@@ -282,11 +282,11 @@
 
 **权限**: 仅超级管理员（role=1）可访问
 
-**路径**: `src/modules/data-transfer/`
+**路径**: `apps/server/src/modules/data-transfer/`
 
 #### 16. AI 模块 (AI Module)
 
-**路径**: `src/modules/ai/`
+**路径**: `apps/server/src/modules/ai/`
 
 **职责**:
 
@@ -328,7 +328,7 @@ Agent 核心逻辑位于 `packages/ai-agent/`，通过 `@blog/ai-agent` workspac
 
 #### 17. 站点配置模块 (Site Config Module)
 
-**路径**: `src/modules/site-config/`
+**路径**: `apps/server/src/modules/site-config/`
 
 **职责**:
 
@@ -344,7 +344,7 @@ Agent 核心逻辑位于 `packages/ai-agent/`，通过 `@blog/ai-agent` workspac
 
 #### 18. 邮件模块 (Email Module)
 
-**路径**: `src/modules/email/`
+**路径**: `apps/server/src/modules/email/`
 
 **职责**:
 
@@ -376,7 +376,7 @@ Agent 核心逻辑位于 `packages/ai-agent/`，通过 `@blog/ai-agent` workspac
 
 ### 公共模块 (Common Module)
 
-**路径**: `src/common/`
+**路径**: `apps/server/src/common/`
 
 **包含**:
 
